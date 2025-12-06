@@ -5,9 +5,9 @@
     "optional": [],
     "js": "index.js",
     "css": "style.css",
-    "author": "LazyPeople",
+    "author": "Bob The Bin Chicken",
     "version": "1.0.0",
-    "homePage": "https://github.com/SillyTavern/SillyTavern",
+    "homePage": "https://github.com/BobTheBinChicken/Ultimate-Persona",
     "description": "Automatically generate user personas based on character cards with complementary or contrasting traits"
 }
 

@@ -14,7 +14,8 @@ function uuidv4() {
     });
 }
 
-const MODULE_NAME = 'UltimatePersona';
+const MODULE_NAME = 'Ultimate-Persona';
+const EXTENSION_PATH = 'third-party/Ultimate-Persona'; // For template/asset loading
 const TAG_NAME = 'Ultimate Persona';
 const TAG_COLOR = '#9333ea';
 const TAG_COLOR2 = '#c084fc';
@@ -137,7 +138,7 @@ Respond with ONLY the enhanced text.`;
 
 async function loadOfflineData() {
     try {
-        const response = await fetch(`/scripts/extensions/${MODULE_NAME}/data.json`);
+        const response = await fetch(`/scripts/extensions/${EXTENSION_PATH}/data.json`);
         if (response.ok) {
             offlineData = await response.json();
         }
@@ -902,7 +903,7 @@ function renderBackgroundChips(container, items, selectedId, dataAttr) {
 
 async function showSettingsPopup() {
     try {
-        const html = await renderExtensionTemplateAsync(MODULE_NAME, 'settings');
+        const html = await renderExtensionTemplateAsync(EXTENSION_PATH, 'settings');
         const dlg = $(html);
         const settings = getSettings();
 
@@ -1225,7 +1226,7 @@ How they generally act in social situations.`;
 
 async function showQuickPersonaPopup() {
     try {
-        const html = await renderExtensionTemplateAsync(MODULE_NAME, 'quick');
+        const html = await renderExtensionTemplateAsync(EXTENSION_PATH, 'quick');
         const dlg = $(html);
         const settings = getSettings();
 
@@ -1636,7 +1637,7 @@ async function showQuickPersonaPopup() {
 
 async function showUltimatePersonaPopup() {
     try {
-        const html = await renderExtensionTemplateAsync(MODULE_NAME, 'popup');
+        const html = await renderExtensionTemplateAsync(EXTENSION_PATH, 'popup');
         const dlg = $(html);
         const settings = getSettings();
 
