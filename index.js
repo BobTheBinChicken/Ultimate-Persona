@@ -14,7 +14,7 @@ function uuidv4() {
     });
 }
 
-const MODULE_NAME = 'UltimatePersona';
+const MODULE_NAME = 'Ultimate-Persona';
 const TAG_NAME = 'Ultimate Persona';
 const TAG_COLOR = '#9333ea';
 const TAG_COLOR2 = '#c084fc';
@@ -2686,3 +2686,4 @@ jQuery(async () => {
         console.error('[Ultimate Persona] Initialization failed:', error);
     }
 });
+
