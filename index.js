@@ -1,9 +1,9 @@
-import { characters, getRequestHeaders, this_chid, saveSettingsDebounced, generateRaw } from '../../../script.js';
-import { getContext, extension_settings, renderExtensionTemplateAsync } from '../../extensions.js';
-import { POPUP_TYPE, callGenericPopup, Popup } from '../../popup.js';
-import { initPersona, getUserAvatars, setUserAvatar, user_avatar } from '../../personas.js';
-import { power_user } from '../../power-user.js';
-import { tags, tag_map, addTagsToEntity, getTagKeyForEntity } from '../../tags.js';
+import { characters, getRequestHeaders, this_chid, saveSettingsDebounced, generateRaw } from '../../../../script.js';
+import { getContext, extension_settings, renderExtensionTemplateAsync } from '../../../extensions.js';
+import { POPUP_TYPE, callGenericPopup, Popup } from '../../../popup.js';
+import { initPersona, getUserAvatars, setUserAvatar, user_avatar } from '../../../personas.js';
+import { power_user } from '../../../power-user.js';
+import { tags, tag_map, addTagsToEntity, getTagKeyForEntity } from '../../../tags.js';
 
 // Simple UUID generator
 function uuidv4() {
