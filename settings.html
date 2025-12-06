@@ -1,0 +1,238 @@
+<div class="up-settings-container">
+    <div class="up-settings-header">
+        <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Ultimate Persona Settings</h2>
+        <p class="up-settings-subtitle">Customize your persona generation experience</p>
+    </div>
+
+    <div class="up-settings-tabs">
+        <button class="up-settings-tab active" data-tab="general">
+            <i class="fa-solid fa-sliders"></i> General
+        </button>
+        <button class="up-settings-tab" data-tab="prompts">
+            <i class="fa-solid fa-message"></i> Prompts
+        </button>
+        <button class="up-settings-tab" data-tab="templates">
+            <i class="fa-solid fa-bookmark"></i> Templates
+        </button>
+        <button class="up-settings-tab" data-tab="history">
+            <i class="fa-solid fa-clock-rotate-left"></i> History
+        </button>
+        <button class="up-settings-tab" data-tab="personas">
+            <i class="fa-solid fa-users"></i> Manage Personas
+        </button>
+    </div>
+
+    <!-- General Settings Tab -->
+    <div class="up-settings-panel active" data-panel="general">
+        <div class="up-settings-section">
+            <h3><i class="fa-solid fa-gear"></i> Default Settings</h3>
+            
+            <div class="up-setting-row">
+                <label>Default Plot Mode</label>
+                <select id="up_default_plot_mode" class="up-select">
+                    <option value="canon">Canon Integration</option>
+                    <option value="au">Alternate Universe</option>
+                    <option value="nsfw">NSFW Focus</option>
+                </select>
+            </div>
+
+            <div class="up-setting-row">
+                <label>Default Narration Style</label>
+                <select id="up_default_narration" class="up-select">
+                    <option value="mixed">Mixed/Natural</option>
+                    <option value="first">First Person</option>
+                    <option value="second">Second Person</option>
+                    <option value="third">Third Person</option>
+                </select>
+            </div>
+
+            <div class="up-setting-row">
+                <label>Default Setting/Era</label>
+                <select id="up_default_setting" class="up-select">
+                    <option value="modern">Modern</option>
+                    <option value="fantasy">Fantasy</option>
+                    <option value="scifi">Sci-Fi</option>
+                </select>
+            </div>
+
+            <div class="up-setting-row">
+                <label>Number of Traits to Generate</label>
+                <input type="number" id="up_trait_count" class="up-input" min="3" max="10" value="6">
+            </div>
+
+            <div class="up-setting-row">
+                <label>Number of Plot Hooks to Generate</label>
+                <input type="number" id="up_hook_count" class="up-input" min="2" max="8" value="4">
+            </div>
+        </div>
+
+        <div class="up-settings-section">
+            <h3><i class="fa-solid fa-paintbrush"></i> Visual Options</h3>
+            
+            <div class="up-setting-row up-setting-toggle">
+                <label>Enable Animations</label>
+                <input type="checkbox" id="up_enable_animations" checked>
+            </div>
+
+            <div class="up-setting-row up-setting-toggle">
+                <label>Show Confetti on Completion</label>
+                <input type="checkbox" id="up_enable_confetti" checked>
+            </div>
+
+            <div class="up-setting-row up-setting-toggle">
+                <label>Auto-scroll Carousel to Selected</label>
+                <input type="checkbox" id="up_auto_scroll" checked>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prompts Tab -->
+    <div class="up-settings-panel" data-panel="prompts">
+        <div class="up-settings-section">
+            <h3><i class="fa-solid fa-robot"></i> AI Prompts</h3>
+            <p class="up-settings-info">Customize the prompts used for AI generation. Use placeholders like {{char_name}}, {{persona_name}}, etc.</p>
+
+            <div class="up-prompt-group">
+                <label>Persona Generation Prompt</label>
+                <textarea id="up_persona_prompt" class="up-textarea up-prompt-textarea" rows="8"></textarea>
+                <button class="up-btn up-btn-small up-btn-outline" id="up_reset_persona_prompt">
+                    <i class="fa-solid fa-rotate-left"></i> Reset to Default
+                </button>
+            </div>
+
+            <div class="up-prompt-group">
+                <label>Plot Hooks Prompt</label>
+                <textarea id="up_hooks_prompt" class="up-textarea up-prompt-textarea" rows="6"></textarea>
+                <button class="up-btn up-btn-small up-btn-outline" id="up_reset_hooks_prompt">
+                    <i class="fa-solid fa-rotate-left"></i> Reset to Default
+                </button>
+            </div>
+
+            <div class="up-prompt-group">
+                <label>Greeting Generation Prompt</label>
+                <textarea id="up_greeting_prompt" class="up-textarea up-prompt-textarea" rows="6"></textarea>
+                <button class="up-btn up-btn-small up-btn-outline" id="up_reset_greeting_prompt">
+                    <i class="fa-solid fa-rotate-left"></i> Reset to Default
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Templates Tab -->
+    <div class="up-settings-panel" data-panel="templates">
+        <div class="up-settings-section">
+            <h3><i class="fa-solid fa-bookmark"></i> Saved Templates</h3>
+            <p class="up-settings-info">Save and reuse trait combinations for quick persona creation.</p>
+
+            <div class="up-templates-list" id="up_templates_list">
+                <div class="up-empty-state">
+                    <i class="fa-solid fa-bookmark"></i>
+                    <p>No templates saved yet</p>
+                    <span>Create a persona and save it as a template!</span>
+                </div>
+            </div>
+
+            <div class="up-template-create">
+                <h4><i class="fa-solid fa-plus"></i> Create New Template</h4>
+                <div class="up-form-row">
+                    <input type="text" id="up_new_template_name" class="up-input" placeholder="Template name...">
+                </div>
+                <div class="up-form-row">
+                    <input type="text" id="up_new_template_vibe" class="up-input" placeholder="Vibe description...">
+                </div>
+                <div class="up-form-row">
+                    <input type="text" id="up_new_template_positive" class="up-input" placeholder="Positive traits (comma separated)...">
+                </div>
+                <div class="up-form-row">
+                    <input type="text" id="up_new_template_negative" class="up-input" placeholder="Negative traits (comma separated)...">
+                </div>
+                <button class="up-btn up-btn-primary" id="up_save_new_template">
+                    <i class="fa-solid fa-save"></i> Save Template
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Tab -->
+    <div class="up-settings-panel" data-panel="history">
+        <div class="up-settings-section">
+            <h3><i class="fa-solid fa-clock-rotate-left"></i> Creation History</h3>
+            <p class="up-settings-info">View personas you've created with Ultimate Persona.</p>
+
+            <div class="up-history-actions">
+                <button class="up-btn up-btn-outline up-btn-small" id="up_export_history">
+                    <i class="fa-solid fa-download"></i> Export History
+                </button>
+                <button class="up-btn up-btn-outline up-btn-small up-btn-danger" id="up_clear_history">
+                    <i class="fa-solid fa-trash"></i> Clear History
+                </button>
+            </div>
+
+            <div class="up-history-list" id="up_history_list">
+                <div class="up-empty-state">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <p>No history yet</p>
+                    <span>Create your first persona to see it here!</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Personas Tab -->
+    <div class="up-settings-panel" data-panel="personas">
+        <div class="up-settings-section">
+            <h3><i class="fa-solid fa-users"></i> Persona Manager</h3>
+            <p class="up-settings-info">Manage and bulk delete your SillyTavern personas.</p>
+
+            <div class="up-persona-manager-actions">
+                <div class="up-search-box">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" id="up_persona_search" class="up-input" placeholder="Search personas...">
+                </div>
+                <div class="up-bulk-actions">
+                    <button class="up-btn up-btn-outline up-btn-small" id="up_select_all_personas">
+                        <i class="fa-solid fa-check-double"></i> Select All
+                    </button>
+                    <button class="up-btn up-btn-outline up-btn-small" id="up_deselect_all_personas">
+                        <i class="fa-solid fa-square"></i> Deselect All
+                    </button>
+                    <button class="up-btn up-btn-danger up-btn-small" id="up_delete_selected_personas" disabled>
+                        <i class="fa-solid fa-trash"></i> Delete Selected (<span id="up_selected_count">0</span>)
+                    </button>
+                </div>
+            </div>
+
+            <div class="up-persona-grid" id="up_persona_grid">
+                <div class="up-loading">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <p>Loading personas...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Greeting Library (if we have greetings) -->
+    <div class="up-settings-panel" data-panel="greetings" style="display: none;">
+        <div class="up-settings-section">
+            <h3><i class="fa-solid fa-message"></i> Greeting Library</h3>
+            <p class="up-settings-info">View greetings you've added to characters.</p>
+
+            <div class="up-greeting-library" id="up_greeting_library">
+                <div class="up-empty-state">
+                    <i class="fa-solid fa-message"></i>
+                    <p>No greetings tracked yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="up-settings-footer">
+        <button class="up-btn up-btn-secondary" id="up_close_settings">
+            <i class="fa-solid fa-times"></i> Close
+        </button>
+        <button class="up-btn up-btn-primary" id="up_save_settings">
+            <i class="fa-solid fa-save"></i> Save Settings
+        </button>
+    </div>
+</div>
+

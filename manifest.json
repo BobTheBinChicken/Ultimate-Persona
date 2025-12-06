@@ -1,0 +1,13 @@
+{
+    "display_name": "Ultimate Persona",
+    "loading_order": 100,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "LazyPeople",
+    "version": "1.0.0",
+    "homePage": "https://github.com/SillyTavern/SillyTavern",
+    "description": "Automatically generate user personas based on character cards with complementary or contrasting traits"
+}
+

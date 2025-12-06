@@ -1,0 +1,327 @@
+<div class="ultimate-persona-container upq-container">
+    <!-- Confetti Canvas -->
+    <canvas id="upq_confetti_canvas" class="up-confetti-canvas"></canvas>
+
+    <!-- Progress Bar -->
+    <div class="up-progress-bar">
+        <div class="up-progress-step active" data-step="1">
+            <div class="up-progress-icon">1</div>
+            <span>Identity</span>
+        </div>
+        <div class="up-progress-line"></div>
+        <div class="up-progress-step" data-step="2">
+            <div class="up-progress-icon">2</div>
+            <span>Traits</span>
+        </div>
+        <div class="up-progress-line"></div>
+        <div class="up-progress-step" data-step="3">
+            <div class="up-progress-icon">3</div>
+            <span>Background</span>
+        </div>
+        <div class="up-progress-line"></div>
+        <div class="up-progress-step" data-step="4">
+            <div class="up-progress-icon">4</div>
+            <span>Create</span>
+        </div>
+    </div>
+
+    <!-- Step 1: Identity & Appearance -->
+    <div class="upq-step up-step-animate" data-step="1">
+        <div class="up-step-header">
+            <h2><i class="fa-solid fa-bolt"></i> Quick Persona</h2>
+            <p class="up-subtitle">Create a standalone persona without a character card</p>
+        </div>
+
+        <!-- Basic Identity -->
+        <div class="up-form-row">
+            <div class="up-form-group up-form-flex">
+                <label for="upq_persona_name">
+                    Persona Name
+                    <span class="up-optional">(leave blank for AI)</span>
+                </label>
+                <input type="text" id="upq_persona_name" class="up-input" placeholder="Enter a name...">
+            </div>
+            <div class="up-form-group">
+                <label for="upq_persona_gender">Gender</label>
+                <select id="upq_persona_gender" class="up-select">
+                    <option value="">Any / Not specified</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="non-binary">Non-binary</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-palette"></i> Character Vibe</label>
+            <div class="up-vibe-presets" id="upq_vibe_presets"></div>
+            <div class="up-vibe-custom">
+                <input type="text" id="upq_persona_vibe" class="up-input" placeholder="Or type your own vibe...">
+                <button id="upq_enhance_vibe" class="up-btn-magic" title="Enhance with AI">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Setting Tabs -->
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-masks-theater"></i> Setting</label>
+            <div class="up-setting-tabs">
+                <button class="upq-setting-tab up-setting-tab active" data-setting="modern">
+                    <i class="fa-solid fa-city"></i> Modern
+                </button>
+                <button class="upq-setting-tab up-setting-tab" data-setting="fantasy">
+                    <i class="fa-solid fa-hat-wizard"></i> Fantasy
+                </button>
+                <button class="upq-setting-tab up-setting-tab" data-setting="scifi">
+                    <i class="fa-solid fa-rocket"></i> Sci-Fi
+                </button>
+            </div>
+        </div>
+
+        <!-- Physical Appearance -->
+        <div class="up-form-row">
+            <div class="up-form-group up-form-flex">
+                <label><i class="fa-solid fa-ruler-vertical"></i> Height</label>
+                <div class="up-combo-input">
+                    <select id="upq_height" class="up-select upq-combo-select"></select>
+                    <input type="text" id="upq_height_custom" class="up-input upq-combo-text" placeholder="Or custom...">
+                </div>
+            </div>
+            <div class="up-form-group up-form-flex">
+                <label><i class="fa-solid fa-child-reaching"></i> Body Type</label>
+                <div class="up-combo-input">
+                    <select id="upq_body_type" class="up-select upq-combo-select"></select>
+                    <input type="text" id="upq_body_type_custom" class="up-input upq-combo-text" placeholder="Or custom...">
+                </div>
+            </div>
+        </div>
+
+        <div class="up-form-row">
+            <div class="up-form-group up-form-flex">
+                <label><i class="fa-solid fa-droplet"></i> Hair Color</label>
+                <div class="up-combo-input">
+                    <select id="upq_hair_color" class="up-select upq-combo-select"></select>
+                    <input type="text" id="upq_hair_color_custom" class="up-input upq-combo-text" placeholder="Or custom...">
+                </div>
+            </div>
+            <div class="up-form-group up-form-flex">
+                <label><i class="fa-solid fa-wind"></i> Hair Style</label>
+                <div class="up-combo-input">
+                    <select id="upq_hair_type" class="up-select upq-combo-select"></select>
+                    <input type="text" id="upq_hair_type_custom" class="up-input upq-combo-text" placeholder="Or custom...">
+                </div>
+            </div>
+        </div>
+
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-eye"></i> Eye Color</label>
+            <input type="text" id="upq_eye_color" class="up-input" placeholder="e.g., Deep blue, Heterochromia...">
+        </div>
+
+        <div class="up-form-row">
+            <div class="up-form-group up-form-flex">
+                <label><i class="fa-solid fa-shirt"></i> Clothing</label>
+                <div class="up-combo-input">
+                    <select id="upq_clothing" class="up-select upq-combo-select"></select>
+                    <input type="text" id="upq_clothing_custom" class="up-input upq-combo-text" placeholder="Or describe...">
+                </div>
+            </div>
+            <div class="up-form-group up-form-flex">
+                <label><i class="fa-solid fa-briefcase"></i> Profession</label>
+                <div class="up-combo-input">
+                    <select id="upq_profession" class="up-select upq-combo-select"></select>
+                    <input type="text" id="upq_profession_custom" class="up-input upq-combo-text" placeholder="Or custom...">
+                </div>
+            </div>
+        </div>
+
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-shield"></i> Weapon/Combat</label>
+            <div class="up-combo-input">
+                <select id="upq_weapon" class="up-select upq-combo-select"></select>
+                <input type="text" id="upq_weapon_custom" class="up-input upq-combo-text" placeholder="Or describe...">
+            </div>
+        </div>
+
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-pencil"></i> Additional Details <span class="up-optional">(scars, tattoos...)</span></label>
+            <div class="up-textarea-with-magic">
+                <textarea id="upq_physical_notes" class="up-textarea" rows="2" placeholder="Distinctive features..."></textarea>
+                <button id="upq_enhance_physical" class="up-btn-magic" title="Enhance with AI">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="up-quick-actions">
+            <button id="upq_randomize_appearance" class="up-btn up-btn-outline up-btn-small">
+                <i class="fa-solid fa-dice"></i> Randomize
+            </button>
+        </div>
+
+        <div class="up-actions">
+            <button id="upq_next_to_traits" class="up-btn up-btn-primary">
+                <span class="btn-text">Continue</span> <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 2: Traits -->
+    <div class="upq-step up-step-animate" data-step="2" style="display: none;">
+        <div class="up-step-header">
+            <h2><i class="fa-solid fa-star"></i> Persona Traits</h2>
+            <p class="up-subtitle">Click to select traits</p>
+        </div>
+
+        <div class="up-traits-section">
+            <div class="up-traits-column up-traits-positive">
+                <div class="up-traits-header">
+                    <h3><i class="fa-solid fa-sun"></i> Positive</h3>
+                    <button id="upq_regen_positive" class="up-btn-icon" title="Regenerate">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                </div>
+                <div id="upq_positive_traits" class="up-trait-chips"></div>
+                <div class="up-trait-suggestions">
+                    <span class="up-suggestions-label">Click to add:</span>
+                    <div id="upq_positive_suggestions" class="up-suggestions-chips"></div>
+                </div>
+            </div>
+
+            <div class="up-traits-column up-traits-negative">
+                <div class="up-traits-header">
+                    <h3><i class="fa-solid fa-moon"></i> Flaws</h3>
+                    <button id="upq_regen_negative" class="up-btn-icon" title="Regenerate">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                </div>
+                <div id="upq_negative_traits" class="up-trait-chips"></div>
+                <div class="up-trait-suggestions">
+                    <span class="up-suggestions-label">Click to add:</span>
+                    <div id="upq_negative_suggestions" class="up-suggestions-chips"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="up-actions up-actions-split">
+            <button id="upq_back_to_identity" class="up-btn up-btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+            <button id="upq_next_to_background" class="up-btn up-btn-primary">
+                <span class="btn-text">Continue</span> <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 3: Background -->
+    <div class="upq-step up-step-animate" data-step="3" style="display: none;">
+        <div class="up-step-header">
+            <h2><i class="fa-solid fa-book"></i> Background</h2>
+            <p class="up-subtitle">Optional backstory elements</p>
+        </div>
+
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-home"></i> Upbringing</label>
+            <div class="up-background-chips" id="upq_upbringing_chips"></div>
+            <input type="text" id="upq_upbringing_custom" class="up-input up-mt-10" placeholder="Or describe...">
+        </div>
+
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-compass"></i> Core Motivation</label>
+            <div class="up-background-chips" id="upq_motivation_chips"></div>
+            <input type="text" id="upq_motivation_custom" class="up-input up-mt-10" placeholder="Or describe...">
+        </div>
+
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-scroll"></i> Full Background <span class="up-optional">(optional)</span></label>
+            <div class="up-textarea-with-magic">
+                <textarea id="upq_background_full" class="up-textarea" rows="3" placeholder="Write a complete backstory or leave blank..."></textarea>
+                <button id="upq_generate_background" class="up-btn-magic" title="Generate from selections">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="up-actions up-actions-split">
+            <button id="upq_back_to_traits" class="up-btn up-btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+            <button id="upq_generate_persona" class="up-btn up-btn-primary up-btn-large">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> <span class="btn-text">Generate Persona</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 4: Review & Create -->
+    <div class="upq-step up-step-animate" data-step="4" style="display: none;">
+        <div class="up-step-header">
+            <h2><i class="fa-solid fa-check-double"></i> Review & Create</h2>
+            <p class="up-subtitle">Edit and save your persona</p>
+        </div>
+
+        <div class="up-form-group">
+            <label for="upq_final_name">Name</label>
+            <input type="text" id="upq_final_name" class="up-input">
+        </div>
+
+        <div class="up-form-group">
+            <label for="upq_final_description">Description</label>
+            <textarea id="upq_final_description" class="up-textarea" rows="12"></textarea>
+        </div>
+
+        <div class="up-actions up-actions-three">
+            <button id="upq_back_to_background" class="up-btn up-btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+            <button id="upq_regenerate" class="up-btn up-btn-outline">
+                <i class="fa-solid fa-rotate"></i> <span class="btn-text">Regenerate</span>
+            </button>
+            <button id="upq_create_persona" class="up-btn up-btn-success up-btn-large">
+                <i class="fa-solid fa-user-plus"></i> <span class="btn-text">Create Persona</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Success Screen -->
+    <div class="upq-step up-step-animate up-success-step" data-step="success" style="display: none;">
+        <div class="up-success-content">
+            <div class="up-success-icon">
+                <i class="fa-solid fa-check-circle"></i>
+            </div>
+            <h2>Persona Created!</h2>
+
+            <div class="up-success-actions">
+                <button id="upq_use_persona" class="up-btn up-btn-primary up-btn-large">
+                    <i class="fa-solid fa-user-check"></i> Use Now
+                </button>
+                <button id="upq_close_wizard" class="up-btn up-btn-secondary">
+                    <i class="fa-solid fa-times"></i> Close
+                </button>
+            </div>
+
+            <!-- Image Prompts -->
+            <div class="up-image-prompt-section">
+                <div class="up-image-prompt-header">
+                    <h3><i class="fa-solid fa-image"></i> Generate Persona Image</h3>
+                    <p>Use these tags in ComfyUI, Stable Diffusion, or similar generators</p>
+                </div>
+                <div class="up-image-prompt-box">
+                    <label>Booru-Style Tags (Illustrious/Pony)</label>
+                    <div class="up-prompt-display">
+                        <textarea id="upq_booru_tags" class="up-textarea up-prompt-textarea" rows="4" readonly></textarea>
+                        <button id="upq_copy_booru" class="up-btn-copy" title="Copy to clipboard"><i class="fa-solid fa-copy"></i></button>
+                    </div>
+                </div>
+                <div class="up-image-prompt-box">
+                    <label>Natural Language Prompt</label>
+                    <div class="up-prompt-display">
+                        <textarea id="upq_natural_prompt" class="up-textarea up-prompt-textarea" rows="3" readonly></textarea>
+                        <button id="upq_copy_natural" class="up-btn-copy" title="Copy to clipboard"><i class="fa-solid fa-copy"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
