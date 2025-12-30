@@ -142,6 +142,34 @@ Contributions are welcome! Feel free to:
 - Template and history system
 - Bulk persona management
 
+## [1.1.0] - 2025-12-28
+
+### 🚀 New Features
+- **Standalone Greeting Wizard**: A new dedicated tool to generate alternate greetings for any character without needing to create a full persona first.
+- **Persona Greeting Integration**: Seamlessly generate greetings tailored to your specific personas directly from the creation wizard.
+- **Enhanced Premise Selection**: Added "Popular Presets" (e.g., *Enemies to Lovers*, *Coworkers*, *Slow Burn*) to quickly jumpstart your scenario generation.
+- **Smart Enhancement Tools**:
+    - **Quick Enhance**: One-click buttons to instantly add more description, dialogue, or persona references to your generated greetings.
+    - **Tone Adjustment**: Easily shift the greeting's tone (e.g., *Romantic*, *Dark*, *Funny*).
+- **Greeting Length Control**: New options to specify "Short", "Medium", or "Long" (5+ paragraphs) outputs for all greeting generators.
+
+### ✨ Improvements
+- **UI & Aesthetics**:
+    - Redesigned "Success Screens" with a premium glassmorphism look, including radial glows and smoother animations.
+    - Standardized the UI across all wizards for a consistent logic and feel.
+- **Performance**:
+    - Optimized the confetti celebration animation to reduce GPU usage.
+    - Improved string replacement efficiency for faster generation times.
+
+### 🐛 Bug Fixes
+- **Generation Logic**:
+    - Fixed an issue where selected tags (Location, Relationship) were sometimes ignored by the "Enhance with AI" feature.
+    - Fixed a bug where "Popular Presets" were not correctly passed to the plot hook generator in some cases.
+    - Standardized the generation logic for the Persona Creator to match the high quality of the Standalone Wizard.
+- **Text Safety**:
+    - Fixed "Over-Aggressive Replacement" to prevent common lowercase words from being accidentally replaced by character placeholders.
+    - Improved name checking to prevent hardcoded names from leaking into templates.
+
 ---
 
 ## 📄 License
