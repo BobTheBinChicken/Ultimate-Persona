@@ -15,7 +15,12 @@ function uuidv4() {
 }
 
 const MODULE_NAME = 'Ultimate-Persona';
-const EXTENSION_PATH = 'third-party/Ultimate-Persona'; // For template/asset loading
+// Dynamic path resolution:
+// Finds "extensions" in the URL and takes everything after it, up to the file name.
+// Example: .../extensions/third-party/Ultimate-Persona/index.js -> third-party/Ultimate-Persona
+const parts = import.meta.url.split('/');
+const index = parts.indexOf('extensions');
+const EXTENSION_PATH = parts.slice(index + 1, parts.length - 1).join('/');
 const TAG_NAME = 'Ultimate Persona';
 const TAG_COLOR = '#9333ea';
 const TAG_COLOR2 = '#c084fc';
