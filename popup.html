@@ -644,12 +644,48 @@
             </div>
         </div>
 
+        <!-- Length Preference -->
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-ruler-horizontal"></i> Greeting Length</label>
+            <div class="ugw-length-options">
+                <div class="ugw-length-option" data-length="short">
+                    <div class="ugw-length-name">Short</div>
+                    <div class="ugw-length-desc">1-2 paragraphs</div>
+                </div>
+                <div class="ugw-length-option selected" data-length="medium">
+                    <div class="ugw-length-name">Medium</div>
+                    <div class="ugw-length-desc">3-4 paragraphs</div>
+                </div>
+                <div class="ugw-length-option" data-length="long">
+                    <div class="ugw-length-name">Long</div>
+                    <div class="ugw-length-desc">5+ paragraphs</div>
+                </div>
+            </div>
+        </div>
+
         <div class="up-form-group">
             <label for="up_greeting_preview">
                 <i class="fa-solid fa-message"></i> Generated Greeting
                 <span class="up-optional">(edit as needed)</span>
             </label>
             <textarea id="up_greeting_preview" class="up-textarea up-textarea-large" rows="12" placeholder="Generating greeting..."></textarea>
+        </div>
+
+        <!-- Enhancement Options -->
+        <div class="ugw-enhance-options">
+            <span class="ugw-enhance-label">Quick Enhance:</span>
+            <button id="up_more_description" class="up-btn up-btn-outline up-btn-small">
+                <i class="fa-solid fa-image"></i> More Description
+            </button>
+            <button id="up_more_dialogue" class="up-btn up-btn-outline up-btn-small">
+                <i class="fa-solid fa-comments"></i> More Dialogue
+            </button>
+            <button id="up_more_persona" class="up-btn up-btn-outline up-btn-small">
+                <i class="fa-solid fa-user"></i> More Persona
+            </button>
+            <button id="up_adjust_tone" class="up-btn up-btn-outline up-btn-small">
+                <i class="fa-solid fa-palette"></i> Adjust Tone
+            </button>
         </div>
 
         <div class="up-actions up-actions-three">

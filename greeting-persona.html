@@ -1,0 +1,583 @@
+<div class="ultimate-persona-container ugp-container">
+    <!-- Confetti Canvas -->
+    <canvas id="ugp_confetti_canvas" class="up-confetti-canvas"></canvas>
+
+    <!-- Progress Bar -->
+    <div class="up-progress-bar">
+        <div class="up-progress-step active" data-step="1">
+            <div class="up-progress-icon">1</div>
+            <span>Persona</span>
+        </div>
+        <div class="up-progress-line"></div>
+        <div class="up-progress-step" data-step="2">
+            <div class="up-progress-icon">2</div>
+            <span>Character</span>
+        </div>
+        <div class="up-progress-line"></div>
+        <div class="up-progress-step" data-step="3">
+            <div class="up-progress-icon">3</div>
+            <span>Story Type</span>
+        </div>
+        <div class="up-progress-line"></div>
+        <div class="up-progress-step" data-step="4">
+            <div class="up-progress-icon">4</div>
+            <span>Premise</span>
+        </div>
+        <div class="up-progress-line"></div>
+        <div class="up-progress-step" data-step="5">
+            <div class="up-progress-icon">5</div>
+            <span>Plot Hooks</span>
+        </div>
+        <div class="up-progress-line"></div>
+        <div class="up-progress-step" data-step="6">
+            <div class="up-progress-icon">6</div>
+            <span>Details</span>
+        </div>
+        <div class="up-progress-line"></div>
+        <div class="up-progress-step" data-step="7">
+            <div class="up-progress-icon">7</div>
+            <span>Generate</span>
+        </div>
+    </div>
+
+    <!-- Step 1: Persona Selection -->
+    <div class="ugp-step up-step-animate" data-step="1">
+        <div class="up-step-header">
+            <h2><i class="fa-solid fa-user-pen"></i> Select Your Persona</h2>
+            <p class="up-subtitle">Choose the persona to feature in the greeting</p>
+        </div>
+
+        <!-- Search -->
+        <div class="up-char-search-row">
+            <div class="up-search-box">
+                <i class="fa-solid fa-search"></i>
+                <input type="text" id="ugp_persona_search" class="up-input" placeholder="Search personas...">
+            </div>
+        </div>
+
+        <!-- Persona Grid -->
+        <div class="ugp-persona-carousel-wrapper">
+            <button id="ugp_persona_prev" class="up-carousel-btn up-carousel-prev">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="ugp-persona-container">
+                <div id="ugp_persona_carousel" class="ugp-persona-carousel"></div>
+            </div>
+            <button id="ugp_persona_next" class="up-carousel-btn up-carousel-next">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <div class="ugp-selected-persona-display">
+            <span class="up-selected-label">Selected Persona:</span>
+            <span id="ugp_selected_persona_name" class="up-selected-name">None</span>
+        </div>
+
+        <!-- Persona Preview -->
+        <div class="ugp-persona-preview" id="ugp_persona_preview" style="display: none;">
+            <div class="ugp-persona-preview-header">
+                <i class="fa-solid fa-id-card"></i>
+                <span>Persona Details</span>
+            </div>
+            <div class="ugp-persona-preview-content" id="ugp_persona_preview_content"></div>
+        </div>
+
+        <div class="up-info-box">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>Your persona will be referenced as {{user}} in the generated greeting.</span>
+        </div>
+
+        <div class="up-actions">
+            <button id="ugp_next_to_char" class="up-btn up-btn-primary">
+                <span class="btn-text">Continue</span> <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 2: Character Selection -->
+    <div class="ugp-step up-step-animate" data-step="2" style="display: none;">
+        <div class="up-step-header">
+            <h2><i class="fa-solid fa-user-group"></i> Select Character</h2>
+            <p class="up-subtitle">Choose the character for the greeting</p>
+        </div>
+
+        <!-- Search and Actions -->
+        <div class="up-char-search-row">
+            <div class="up-search-box">
+                <i class="fa-solid fa-search"></i>
+                <input type="text" id="ugp_char_search" class="up-input" placeholder="Search characters...">
+            </div>
+            <button id="ugp_random_char" class="up-btn up-btn-outline" title="Random character">
+                <i class="fa-solid fa-dice"></i>
+            </button>
+        </div>
+
+        <!-- Character Carousel -->
+        <div class="up-carousel-wrapper">
+            <button id="ugp_carousel_prev" class="up-carousel-btn up-carousel-prev">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="up-carousel-container">
+                <div id="ugp_character_carousel" class="up-carousel"></div>
+            </div>
+            <button id="ugp_carousel_next" class="up-carousel-btn up-carousel-next">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <div class="up-selected-char-display">
+            <span class="up-selected-label">Selected:</span>
+            <span id="ugp_selected_char_name" class="up-selected-name">None</span>
+        </div>
+
+        <!-- Pairing Preview -->
+        <div class="ugp-pairing-preview" id="ugp_pairing_preview" style="display: none;">
+            <div class="ugp-pairing-card">
+                <div class="ugp-pairing-persona">
+                    <img id="ugp_pairing_persona_img" src="/img/ai4.png" alt="Persona">
+                    <span id="ugp_pairing_persona_name">Persona</span>
+                </div>
+                <div class="ugp-pairing-connector">
+                    <i class="fa-solid fa-heart-pulse"></i>
+                </div>
+                <div class="ugp-pairing-char">
+                    <img id="ugp_pairing_char_img" src="/img/ai4.png" alt="Character">
+                    <span id="ugp_pairing_char_name">Character</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Character Greeting Preview -->
+        <div class="ugw-greeting-preview" id="ugp_greeting_preview" style="display: none;">
+            <div class="ugw-preview-header">
+                <i class="fa-solid fa-eye"></i>
+                <span>Existing Greetings: <strong id="ugp_greeting_count">0</strong></span>
+            </div>
+            <div class="ugw-preview-sample" id="ugp_greeting_sample"></div>
+        </div>
+
+        <div class="up-actions up-actions-split">
+            <button id="ugp_back_to_persona" class="up-btn up-btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+            <button id="ugp_next_to_type" class="up-btn up-btn-primary">
+                <span class="btn-text">Continue</span> <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 3: Story Type Selection -->
+    <div class="ugp-step up-step-animate" data-step="3" style="display: none;">
+        <div class="up-step-header">
+            <h2><i class="fa-solid fa-book-open"></i> Story Type</h2>
+            <p class="up-subtitle">What kind of interaction between <strong id="ugp_persona_name_display"></strong> and <strong id="ugp_char_name_display"></strong>?</p>
+        </div>
+
+        <div class="ugw-story-type-cards">
+            <div class="ugw-story-card" data-type="canon">
+                <div class="ugw-story-icon">
+                    <i class="fa-solid fa-scroll"></i>
+                </div>
+                <h3>Canon</h3>
+                <p>Stay true to the character's established world. Your persona enters their universe.</p>
+                <div class="ugw-story-examples">
+                    <span class="ugw-example-tag">In-universe</span>
+                    <span class="ugw-example-tag">Lore-accurate</span>
+                    <span class="ugw-example-tag">Story continuation</span>
+                </div>
+            </div>
+
+            <div class="ugw-story-card" data-type="au">
+                <div class="ugw-story-icon">
+                    <i class="fa-solid fa-shuffle"></i>
+                </div>
+                <h3>Alternate Universe</h3>
+                <p>Both characters in a new context. Focus on personalities in a different setting.</p>
+                <div class="ugw-story-examples">
+                    <span class="ugw-example-tag">Modern day</span>
+                    <span class="ugw-example-tag">Coffee shop</span>
+                    <span class="ugw-example-tag">College</span>
+                </div>
+            </div>
+
+            <div class="ugw-story-card" data-type="nsfw">
+                <div class="ugw-story-icon">
+                    <i class="fa-solid fa-heart"></i>
+                </div>
+                <h3>Romantic / NSFW</h3>
+                <p>An intimate encounter between your persona and the character.</p>
+                <div class="ugw-story-examples">
+                    <span class="ugw-example-tag">First meeting</span>
+                    <span class="ugw-example-tag">Reunion</span>
+                    <span class="ugw-example-tag">Confession</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scenarios Section (shown based on selected story type) -->
+        <div class="ugw-scenarios-section" id="ugp_scenarios_section" style="display: none;">
+            <div class="up-step-header">
+                <h3><i class="fa-solid fa-list"></i> Scenarios</h3>
+                <p class="up-subtitle" id="ugp_scenarios_subtitle">Select a scenario to expand upon in the next step</p>
+            </div>
+            
+            <!-- Canon Scenarios (Tropes) -->
+            <div class="ugw-scenarios-group" id="ugp_canon_scenarios" style="display: none;">
+                <div class="ugw-scenarios-chips" id="ugp_canon_scenarios_chips"></div>
+            </div>
+            
+            <!-- AU Scenarios (Genres) -->
+            <div class="ugw-scenarios-group" id="ugp_au_scenarios" style="display: none;">
+                <div class="ugw-scenarios-chips" id="ugp_au_scenarios_chips"></div>
+            </div>
+            
+            <!-- NSFW Scenarios (Genres) -->
+            <div class="ugw-scenarios-group" id="ugp_nsfw_scenarios" style="display: none;">
+                <div class="ugw-scenarios-chips" id="ugp_nsfw_scenarios_chips"></div>
+            </div>
+        </div>
+
+        <div class="up-actions up-actions-split">
+            <button id="ugp_back_to_char" class="up-btn up-btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+            <button id="ugp_next_to_premise" class="up-btn up-btn-primary">
+                <span class="btn-text">Continue</span> <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 4: Premise Selection (Preset vs Custom) -->
+    <div class="ugp-step up-step-animate" data-step="4" style="display: none;">
+        <div class="up-step-header">
+            <h2><i class="fa-solid fa-compass"></i> Choose Your Premise</h2>
+            <p class="up-subtitle">Start with a preset or build your own scenario</p>
+        </div>
+
+        <div class="ugw-premise-tabs">
+            <button class="ugw-premise-tab active" data-tab="preset">
+                <i class="fa-solid fa-tags"></i> Popular Presets
+            </button>
+            <button class="ugw-premise-tab" data-tab="custom">
+                <i class="fa-solid fa-pencil"></i> Custom Scenario
+            </button>
+        </div>
+
+        <!-- Preset Panel -->
+        <div class="ugw-premise-panel active" data-panel="preset">
+            <div class="ugw-preset-categories">
+                <div class="ugw-category-label">
+                    <i class="fa-solid fa-heart"></i> Relationship Dynamics
+                </div>
+                <div class="ugw-preset-chips" id="ugp_relationship_presets"></div>
+
+                <div class="ugw-category-label">
+                    <i class="fa-solid fa-masks-theater"></i> Tropes & Scenarios
+                </div>
+                <div class="ugw-preset-chips" id="ugp_trope_presets"></div>
+
+                <div class="ugw-category-label">
+                    <i class="fa-solid fa-bolt"></i> Encounters
+                </div>
+                <div class="ugw-preset-chips" id="ugp_encounter_presets"></div>
+            </div>
+
+            <div class="ugw-selected-preset" id="ugp_selected_preset" style="display: none;">
+                <div class="ugw-selected-preset-header">
+                    <i class="fa-solid fa-bookmark"></i>
+                    <span>Selected Premise</span>
+                </div>
+                <div class="ugw-selected-preset-content" id="ugp_preset_content"></div>
+            </div>
+        </div>
+
+        <!-- Custom Panel -->
+        <div class="ugw-premise-panel" data-panel="custom" style="display: none;">
+            <div class="up-form-group">
+                <label><i class="fa-solid fa-users"></i> Relationship Between Persona & Character</label>
+                <div class="ugw-relationship-chips" id="ugp_relationship_chips"></div>
+                <input type="text" id="ugp_relationship_custom" class="up-input up-mt-10" placeholder="Or describe your own relationship...">
+            </div>
+
+            <div class="up-form-group">
+                <label><i class="fa-solid fa-location-dot"></i> Where is this happening?</label>
+                <div class="ugw-location-chips" id="ugp_location_chips"></div>
+                <input type="text" id="ugp_location_custom" class="up-input up-mt-10" placeholder="Or describe a custom location...">
+            </div>
+
+            <div class="up-form-group">
+                <label><i class="fa-solid fa-film"></i> What's happening in the scene?</label>
+                <p class="up-subtitle" style="margin-bottom: 10px; font-size: 0.85em;">Click to add story beats, or write your own scenario</p>
+                
+                <div class="ugw-beats-section">
+                    <div class="ugw-beats-column">
+                        <div class="ugw-beats-header">
+                            <span><i class="fa-solid fa-sun"></i> Positive Beats</span>
+                            <div>
+                                <button id="ugp_add_positive_beat" class="up-btn-icon" title="Add custom positive beat" style="margin-right: 5px;">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                                <button id="ugp_refresh_positive_beats" class="up-btn-icon" title="Refresh">
+                                    <i class="fa-solid fa-rotate"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="ugw-beats-chips" id="ugp_positive_beats"></div>
+                    </div>
+                    <div class="ugw-beats-column">
+                        <div class="ugw-beats-header">
+                            <span><i class="fa-solid fa-cloud"></i> Tension / Conflict</span>
+                            <div>
+                                <button id="ugp_add_negative_beat" class="up-btn-icon" title="Add custom negative beat" style="margin-right: 5px;">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                                <button id="ugp_refresh_negative_beats" class="up-btn-icon" title="Refresh">
+                                    <i class="fa-solid fa-rotate"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="ugw-beats-chips" id="ugp_negative_beats"></div>
+                    </div>
+                </div>
+
+                <div class="ugw-selected-beats" id="ugp_selected_beats_display" style="display: none;">
+                    <span class="ugw-beats-label">Selected beats:</span>
+                    <div id="ugp_selected_beats_list"></div>
+                </div>
+
+                <div class="up-textarea-with-magic up-mt-10">
+                    <textarea id="ugp_scenario_custom" class="up-textarea" rows="3" placeholder="Describe the scenario in detail, or combine it with selected beats above..."></textarea>
+                    <button id="ugp_enhance_scenario" class="up-btn-magic" title="Enhance with AI">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="up-actions up-actions-split">
+            <button id="ugp_back_to_type" class="up-btn up-btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+            <button id="ugp_next_to_hooks" class="up-btn up-btn-primary">
+                <span class="btn-text">Continue</span> <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 5: Plot Hook Generation -->
+    <div class="ugp-step up-step-animate" data-step="5" style="display: none;">
+        <div class="up-step-header">
+            <h2><i class="fa-solid fa-bookmark"></i> Generate Plot Hooks</h2>
+            <p class="up-subtitle">Preview scenario ideas before generating the greeting</p>
+        </div>
+
+        <div class="up-hook-section">
+            <div class="up-hooks-header">
+                <h3><i class="fa-solid fa-bookmark"></i> Plot Hook</h3>
+                <button id="ugp_generate_hooks" class="up-btn up-btn-primary up-btn-small">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Ideas
+                </button>
+            </div>
+
+            <div class="up-hooks-list" id="ugp_hooks_list">
+                <div class="up-empty-state">
+                    <i class="fa-solid fa-bookmark"></i>
+                    <p>No hooks generated yet</p>
+                    <span>Click "Generate Ideas" to create plot hooks</span>
+                </div>
+            </div>
+
+            <div class="up-custom-hook-group">
+                <label class="up-custom-hook-label">
+                    <div class="up-custom-hook-checkbox">
+                        <input type="checkbox" id="ugp_use_custom_hook">
+                        <div class="up-checkbox-custom"></div>
+                    </div>
+                    <span>Use My Own Scenario</span>
+                </label>
+                <div class="up-textarea-with-magic up-mt-10">
+                    <textarea id="ugp_custom_hook_text" class="up-textarea" rows="3" placeholder="Write a custom scenario... (checking the box above will use this instead of generated hooks)"></textarea>
+                    <button id="ugp_enhance_hook" class="up-btn-magic" title="Enhance with AI">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="up-actions up-actions-split">
+            <button id="ugp_back_to_premise" class="up-btn up-btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+            <button id="ugp_next_to_details" class="up-btn up-btn-primary">
+                <span class="btn-text">Continue</span> <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 6: Final Details -->
+    <div class="ugp-step up-step-animate" data-step="6" style="display: none;">
+        <div class="up-step-header">
+            <h2><i class="fa-solid fa-sliders"></i> Fine-Tune Your Greeting</h2>
+            <p class="up-subtitle">Adjust the final details before generation</p>
+        </div>
+
+        <!-- Summary of selections -->
+        <div class="ugw-summary-box">
+            <h3><i class="fa-solid fa-clipboard-list"></i> Your Scenario</h3>
+            <div class="ugw-summary-content">
+                <div class="ugw-summary-row">
+                    <span class="ugw-summary-label">Persona:</span>
+                    <span id="ugp_summary_persona" class="ugw-summary-value"></span>
+                </div>
+                <div class="ugw-summary-row">
+                    <span class="ugw-summary-label">Character:</span>
+                    <span id="ugp_summary_char" class="ugw-summary-value"></span>
+                </div>
+                <div class="ugw-summary-row">
+                    <span class="ugw-summary-label">Story Type:</span>
+                    <span id="ugp_summary_type" class="ugw-summary-value"></span>
+                </div>
+                <div class="ugw-summary-row">
+                    <span class="ugw-summary-label">Premise:</span>
+                    <span id="ugp_summary_premise" class="ugw-summary-value"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Narration Style -->
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-feather"></i> Narration Style</label>
+            <div class="up-narration-options" id="ugp_narration_options"></div>
+        </div>
+
+        <!-- Length Preference -->
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-ruler-horizontal"></i> Greeting Length</label>
+            <div class="ugw-length-options">
+                <div class="ugw-length-option" data-length="short">
+                    <div class="ugw-length-name">Short</div>
+                    <div class="ugw-length-desc">1-2 paragraphs</div>
+                </div>
+                <div class="ugw-length-option selected" data-length="medium">
+                    <div class="ugw-length-name">Medium</div>
+                    <div class="ugw-length-desc">3-4 paragraphs</div>
+                </div>
+                <div class="ugw-length-option" data-length="long">
+                    <div class="ugw-length-name">Long</div>
+                    <div class="ugw-length-desc">5+ paragraphs</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tone Adjustment -->
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-palette"></i> Tone Emphasis</label>
+            <div class="ugw-tone-chips" id="ugp_tone_chips"></div>
+        </div>
+
+        <!-- NSFW-specific tones (shown when NSFW is selected) -->
+        <div class="up-form-group" id="ugp_nsfw_tones_group" style="display: none;">
+            <label><i class="fa-solid fa-fire"></i> Intimate Tone <span class="up-optional">(NSFW-specific)</span></label>
+            <div class="ugw-tone-chips" id="ugp_nsfw_tone_chips"></div>
+        </div>
+
+        <!-- Persona Focus -->
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-user-pen"></i> Persona Mention Level</label>
+            <div class="ugp-persona-focus-options">
+                <div class="ugp-focus-option" data-focus="minimal">
+                    <div class="ugp-focus-name">Minimal</div>
+                    <div class="ugp-focus-desc">Brief {{user}} reference</div>
+                </div>
+                <div class="ugp-focus-option selected" data-focus="balanced">
+                    <div class="ugp-focus-name">Balanced</div>
+                    <div class="ugp-focus-desc">Natural interaction</div>
+                </div>
+                <div class="ugp-focus-option" data-focus="featured">
+                    <div class="ugp-focus-name">Featured</div>
+                    <div class="ugp-focus-desc">Persona traits highlighted</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Instructions -->
+        <div class="up-form-group">
+            <label><i class="fa-solid fa-message"></i> Additional Instructions <span class="up-optional">(optional)</span></label>
+            <textarea id="ugp_additional_instructions" class="up-textarea" rows="2" placeholder="Any specific details, dialogue, or elements you want included..."></textarea>
+        </div>
+
+        <div class="up-actions up-actions-split">
+            <button id="ugp_back_to_hooks" class="up-btn up-btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+            <button id="ugp_generate_greeting" class="up-btn up-btn-primary up-btn-large">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> <span class="btn-text">Generate Greeting</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 7: Review & Save -->
+    <div class="ugp-step up-step-animate" data-step="7" style="display: none;">
+        <div class="up-step-header">
+            <h2><i class="fa-solid fa-check-double"></i> Review Your Greeting</h2>
+            <p class="up-subtitle">Edit, enhance, and save to <strong id="ugp_final_char_name"></strong></p>
+        </div>
+
+        <div class="up-form-group">
+            <label for="ugp_greeting_preview_text">
+                <i class="fa-solid fa-message"></i> Generated Greeting
+            </label>
+            <textarea id="ugp_greeting_preview_text" class="up-textarea up-textarea-large" rows="14" placeholder="Your greeting will appear here..."></textarea>
+        </div>
+
+        <!-- Enhancement Options -->
+        <div class="ugw-enhance-options">
+            <span class="ugw-enhance-label">Quick Enhance:</span>
+            <button id="ugp_more_description" class="up-btn up-btn-outline up-btn-small">
+                <i class="fa-solid fa-image"></i> More Description
+            </button>
+            <button id="ugp_more_dialogue" class="up-btn up-btn-outline up-btn-small">
+                <i class="fa-solid fa-comments"></i> More Dialogue
+            </button>
+            <button id="ugp_more_persona" class="up-btn up-btn-outline up-btn-small">
+                <i class="fa-solid fa-user"></i> More Persona
+            </button>
+            <button id="ugp_adjust_tone" class="up-btn up-btn-outline up-btn-small">
+                <i class="fa-solid fa-palette"></i> Adjust Tone
+            </button>
+        </div>
+
+        <div class="up-actions up-actions-three">
+            <button id="ugp_back_to_details" class="up-btn up-btn-secondary">
+                <i class="fa-solid fa-arrow-left"></i> Back
+            </button>
+            <button id="ugp_regenerate_greeting" class="up-btn up-btn-outline">
+                <i class="fa-solid fa-rotate"></i> <span class="btn-text">Regenerate</span>
+            </button>
+            <button id="ugp_save_greeting" class="up-btn up-btn-success up-btn-large">
+                <i class="fa-solid fa-save"></i> <span class="btn-text">Save to Character</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Success Screen -->
+    <div class="ugp-step up-step-animate up-success-step" data-step="success" style="display: none;">
+        <div class="up-success-content">
+            <div class="up-success-icon">
+                <i class="fa-solid fa-check-circle"></i>
+            </div>
+            <h2>Greeting Saved!</h2>
+            <p class="up-success-message" id="ugp_success_message">Your greeting has been added successfully!</p>
+
+            <div class="up-success-actions">
+                <button id="ugp_create_another" class="up-btn up-btn-primary up-btn-large">
+                    <i class="fa-solid fa-plus"></i> Create Another
+                </button>
+                <button id="ugp_close_wizard" class="up-btn up-btn-secondary">
+                    <i class="fa-solid fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+

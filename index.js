@@ -1,4 +1,4 @@
-import { characters, getRequestHeaders, this_chid, saveSettingsDebounced, generateRaw } from '../../../../script.js';
+import { characters, getRequestHeaders, this_chid, saveSettingsDebounced, generateRaw, name1 } from '../../../../script.js';
 import { getContext, extension_settings, renderExtensionTemplateAsync } from '../../../extensions.js';
 import { POPUP_TYPE, callGenericPopup, Popup } from '../../../popup.js';
 import { initPersona, getUserAvatars, setUserAvatar, user_avatar } from '../../../personas.js';
@@ -7,7 +7,7 @@ import { tags, tag_map, addTagsToEntity, getTagKeyForEntity } from '../../../tag
 
 // Simple UUID generator
 function uuidv4() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         const r = Math.random() * 16 | 0;
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
@@ -27,6 +27,34 @@ let offlineData = {
     clothing: {}, professions: {}, weapons: [],
     narrationStyles: [], plotModes: [], auTypes: [], nsfwScenarios: [],
     upbringings: [], lifeEvents: [], motivations: [], secrets: [],
+    canonTropes: [
+        { id: 'enemy_approaches', name: 'Enemy Approaches', description: 'A known enemy or antagonist enters the scene', keywords: ['enemy', 'antagonist', 'villain', 'rival', 'foe'] },
+        { id: 'betrayal_revealed', name: 'Betrayal Revealed', description: 'A betrayal or secret is uncovered', keywords: ['betrayal', 'secret', 'reveal', 'truth', 'deception'] },
+        { id: 'moral_dilemma', name: 'Moral Dilemma', description: 'Character faces a difficult moral choice', keywords: ['moral', 'dilemma', 'choice', 'ethics', 'decision'] },
+        { id: 'power_struggle', name: 'Power Struggle', description: 'Conflict over authority or control', keywords: ['power', 'authority', 'control', 'leadership', 'dominance'] },
+        { id: 'forbidden_knowledge', name: 'Forbidden Knowledge', description: 'Discovery of dangerous or restricted information', keywords: ['knowledge', 'secret', 'forbidden', 'hidden', 'discovery'] },
+        { id: 'duty_vs_desire', name: 'Duty vs Desire', description: 'Conflict between obligations and personal wants', keywords: ['duty', 'desire', 'obligation', 'responsibility', 'conflict'] },
+        { id: 'rescue_mission', name: 'Rescue Mission', description: 'Character must save someone or something', keywords: ['rescue', 'save', 'mission', 'help', 'aid'] },
+        { id: 'ritual_ceremony', name: 'Ritual or Ceremony', description: 'Important ceremonial event', keywords: ['ritual', 'ceremony', 'rite', 'tradition', 'ceremonial'] },
+        { id: 'ancient_prophecy', name: 'Ancient Prophecy', description: 'Prophecy coming to fruition', keywords: ['prophecy', 'prophesy', 'foretell', 'prediction', 'omen'] },
+        { id: 'artifact_discovery', name: 'Artifact Discovery', description: 'Finding a powerful or significant object', keywords: ['artifact', 'relic', 'discovery', 'treasure', 'object'] },
+        { id: 'alliance_formed', name: 'Alliance Formed', description: 'Forming a new partnership or alliance', keywords: ['alliance', 'partnership', 'pact', 'agreement', 'union'] },
+        { id: 'war_begins', name: 'War Begins', description: 'Start of a major conflict or battle', keywords: ['war', 'battle', 'conflict', 'fight', 'combat'] },
+    ],
+    nsfwScenarios: [
+        { id: 'first_time', name: 'First Time', description: 'New experiences, nervousness and discovery' },
+        { id: 'tension_release', name: 'Tension Release', description: 'Built-up attraction finally breaks' },
+        { id: 'reunion', name: 'Reunion', description: 'Meeting again after time apart' },
+        { id: 'forbidden', name: 'Forbidden', description: 'Shouldn\'t happen but does anyway' },
+        { id: 'rivals', name: 'Rivals to Lovers', description: 'Hate turns to passion' },
+        { id: 'explicit_first_encounter', name: 'Explicit First Encounter', description: 'Direct, passionate first meeting with explicit physical intimacy' },
+        { id: 'explicit_domination', name: 'Explicit Domination', description: 'Power dynamics with explicit dominant/submissive elements' },
+        { id: 'explicit_rough', name: 'Explicit Rough', description: 'Intense, rough physical encounter with explicit details' },
+        { id: 'explicit_tender', name: 'Explicit Tender', description: 'Gentle, loving intimate encounter with explicit romantic details' },
+        { id: 'explicit_public', name: 'Explicit Public', description: 'Risky public encounter with explicit intimate details' },
+        { id: 'explicit_roleplay', name: 'Explicit Roleplay', description: 'Fantasy roleplay scenario with explicit intimate elements' },
+        { id: 'explicit_bdsm', name: 'Explicit BDSM', description: 'Bondage, dominance, submission with explicit details' },
+    ],
     booruTagMappings: {},
 };
 
@@ -140,7 +168,19 @@ async function loadOfflineData() {
     try {
         const response = await fetch(`/scripts/extensions/${EXTENSION_PATH}/data.json`);
         if (response.ok) {
-            offlineData = await response.json();
+            const loadedData = await response.json();
+            // Merge with defaults, preserving defaults if loaded data doesn't have them
+            offlineData = {
+                ...loadedData,
+                // Preserve default canon tropes if not in loaded data
+                canonTropes: loadedData.canonTropes && loadedData.canonTropes.length > 0
+                    ? loadedData.canonTropes
+                    : offlineData.canonTropes,
+                // Merge NSFW scenarios - combine defaults with loaded ones
+                nsfwScenarios: loadedData.nsfwScenarios && loadedData.nsfwScenarios.length > 0
+                    ? [...offlineData.nsfwScenarios, ...loadedData.nsfwScenarios.filter(s => !offlineData.nsfwScenarios.find(d => d.id === s.id))]
+                    : offlineData.nsfwScenarios,
+            };
         }
     } catch (e) {
         console.warn('[Ultimate Persona] Could not load offline data:', e);
@@ -219,41 +259,51 @@ function launchConfetti(canvas) {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const particles = [];
     const colors = ['#667eea', '#764ba2', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
+    const particles = [];
 
-    for (let i = 0; i < 150; i++) {
-        particles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height - canvas.height,
-            r: Math.random() * 6 + 4,
-            d: Math.random() * 150 + 50,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            tilt: Math.floor(Math.random() * 10) - 10,
-            tiltAngleIncrement: Math.random() * 0.07 + 0.05,
-            tiltAngle: 0,
-        });
-    }
+    // Group particles by color to minimize state changes
+    colors.forEach(color => {
+        for (let i = 0; i < 25; i++) { // 25 * 6 colors = 150 particles
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height - canvas.height,
+                r: Math.random() * 6 + 4,
+                d: Math.random() * 150 + 50,
+                color: color,
+                tilt: Math.floor(Math.random() * 10) - 10,
+                tiltAngleIncrement: Math.random() * 0.07 + 0.05,
+                tiltAngle: 0,
+            });
+        }
+    });
 
     let animationId;
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         let allDone = true;
 
-        particles.forEach(p => {
+        // Batch drawing by color
+        colors.forEach(color => {
             ctx.beginPath();
-            ctx.lineWidth = p.r / 2;
-            ctx.strokeStyle = p.color;
-            ctx.moveTo(p.x + p.tilt + p.r / 4, p.y);
-            ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 4);
+            ctx.strokeStyle = color;
+
+            // Draw all particles of this color
+            particles.filter(p => p.color === color).forEach(p => {
+                ctx.lineWidth = p.r / 2;
+                ctx.moveTo(p.x + p.tilt + p.r / 4, p.y);
+                ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 4);
+
+                // Update physics
+                p.tiltAngle += p.tiltAngleIncrement;
+                p.y += (Math.cos(p.d) + 3 + p.r / 2) / 2;
+                p.x += Math.sin(0);
+                p.tilt = Math.sin(p.tiltAngle) * 15;
+
+                if (p.y < canvas.height) allDone = false;
+            });
+
             ctx.stroke();
-
-            p.tiltAngle += p.tiltAngleIncrement;
-            p.y += (Math.cos(p.d) + 3 + p.r / 2) / 2;
-            p.x += Math.sin(0);
-            p.tilt = Math.sin(p.tiltAngle) * 15;
-
-            if (p.y < canvas.height) allDone = false;
         });
 
         if (!allDone) {
@@ -503,13 +553,13 @@ async function generateHooks(charData, charAnalysis, personaData, dynamicType, p
 
 CHARACTER: ${charData.name}
 World/Setting: ${charData.scenario || 'Not specified'}
-Traits: ${(charAnalysis.traits || []).join(', ')}
+Traits: ${(charAnalysis?.traits || []).join(', ')}
 
-PERSONA: ${personaData.name || '{{user}}'}
-Profession: ${personaData.profession || 'unspecified'}
+PERSONA: ${personaData?.name || '{{user}}'}
+Profession: ${personaData?.profession || 'unspecified'}
 Dynamic: ${dynamicType}
-Traits: ${personaData.positiveTraits.join(', ')}
-Flaws: ${personaData.negativeTraits.join(', ')}
+Traits: ${(personaData?.positiveTraits || []).join(', ')}
+Flaws: ${(personaData?.negativeTraits || []).join(', ')}
 
 PLOT MODE: ${modeName}
 ${modeInstructions}
@@ -538,6 +588,148 @@ Respond ONLY with JSON: { "hooks": ["hook1", "hook2", ...] }`;
         'One saves the other from danger.',
         'They share a secret neither expected.',
         'A chance meeting changes everything.'
+    ];
+    return fallbackHooks.slice(0, hookCount);
+}
+
+// Generate hooks specifically for greeting generation with premise information
+async function generateGreetingHooks(charData, storyType, selectedScenario, relationship, location, storyBeats, customScenario, personaData) {
+    const settings = getSettings();
+    const hookCount = settings.hookCount || 4;
+    let modeInstructions = '', modeName = '';
+
+    if (storyType === 'canon') {
+        modeName = 'CANON INTEGRATION';
+        modeInstructions = 'Stay within the character\'s established world, lore, and storyline. The greeting should feel authentic to their universe. Analyze the character card (description, personality, scenario, first_mes) to identify relevant canon story beats, conflicts, and tensions. Generate hooks that naturally emerge from the character\'s established canon.';
+        // Don't use selectedScenario for canon - purely use character card analysis
+    } else if (storyType === 'au') {
+        const auInfo = offlineData.auTypes.find(a => a.id === selectedScenario);
+        modeName = `AU: ${auInfo?.name || selectedScenario || 'Alternate Universe'}`;
+        modeInstructions = `Alternate Universe setting: ${auInfo?.description || selectedScenario || 'Different context'}. Place the character in this new setting while maintaining their core personality.`;
+    } else if (storyType === 'nsfw') {
+        const nsfwInfo = offlineData.nsfwScenarios.find(n => n.id === selectedScenario);
+        const isExplicit = nsfwInfo?.id && nsfwInfo.id.startsWith('explicit_');
+        modeName = `ROMANTIC: ${nsfwInfo?.name || selectedScenario || 'Romance'}`;
+        modeInstructions = `Romantic scenario: ${nsfwInfo?.description || selectedScenario || 'Intimate encounter'}. Focus on tension, chemistry, and emotional/physical connection.${isExplicit ? ' Include explicit, detailed descriptions of physical intimacy and sexual encounters. Be graphic and detailed while maintaining character authenticity.' : ''}`;
+    }
+
+    // Build premise context
+    let premiseContext = '';
+    if (relationship) premiseContext += `Relationship: ${relationship}. `;
+    if (location) premiseContext += `Location: ${location}. `;
+    if (storyBeats && storyBeats.length > 0) {
+        premiseContext += `Story beats to include: ${Array.from(storyBeats).join(', ')}. `;
+    }
+    if (customScenario) premiseContext += `Additional context: ${customScenario}. `;
+
+    // Build persona context - NEVER include persona name, always use {{user}}
+    let personaContext = '';
+    if (personaData) {
+        // Sanitize ALL persona data to remove names
+        const sanitizedDesc = sanitizePersonaText(personaData.description || 'Not specified', personaData);
+        personaContext = `
+PERSONA ({{user}}):
+Description: ${sanitizedDesc}
+Profession: ${personaData.profession || 'unspecified'}
+Traits: ${(personaData.positiveTraits || []).join(', ')}
+Flaws: ${(personaData.negativeTraits || []).join(', ')}
+ABSOLUTELY CRITICAL: Always refer to this persona as {{user}}, NEVER use any name. NEVER use names like "Bob" or any other name - ONLY {{user}}.`;
+    } else {
+        personaContext = `
+PERSONA: {{user}} (generic user, no specific persona)
+ABSOLUTELY CRITICAL: Always refer to the user as {{user}}, NEVER use any name.`;
+    }
+
+    const prompt = `Generate exactly ${hookCount} plot hooks for a greeting between {{char}} and {{user}}.
+
+CHARACTER: {{char}}
+Description: ${charData.description || 'Not specified'}
+Personality: ${charData.personality || 'Not specified'}
+World/Setting: ${charData.scenario || 'Not specified'}
+${personaContext}
+
+STORY TYPE: ${modeName}
+${modeInstructions}
+
+PREMISE CONTEXT:
+${premiseContext || 'A meeting between {{char}} and {{user}}.'}
+
+CRITICAL: Always use {{char}} to refer to the character and {{user}} to refer to the user in the hooks, never use specific names.
+
+Generate exactly ${hookCount} unique, specific plot hooks (2-3 sentences each) that could serve as the opening scenario for a greeting.
+Each hook should be engaging and set up an interesting initial interaction.
+Respond ONLY with JSON: { "hooks": ["hook1", "hook2", ...] }`;
+
+    try {
+        const response = await generateRaw({
+            prompt,
+            systemPrompt: `You MUST generate exactly ${hookCount} plot hooks for greeting generation. 
+
+===== MANDATORY TEMPLATE FORMATTING =====
+You MUST use these exact placeholders - they are TEMPLATES:
+- {{char}} = the character (use this EXACT placeholder, never their actual name)
+- {{user}} = the user/persona (use this EXACT placeholder, never any name)
+
+===== CRITICAL RULES =====
+- {{user}} is the DEFAULT TEMPLATE for referring to the user - use it ALWAYS
+- NEVER generate any actual names (Bob, John, Alice, etc.) - ONLY use {{user}}
+- NEVER use "you" or any pronoun - ONLY use {{user}}
+- {{char}} and {{user}} are TEMPLATE PLACEHOLDERS - write them exactly as shown
+- If you write any name instead of {{user}}, you have made an error
+- The hooks MUST contain {{user}} to refer to the user - no exceptions
+
+EXAMPLE CORRECT: "{{char}} meets {{user}} at the coffee shop."
+EXAMPLE WRONG: "{{char}} meets Bob at the coffee shop." ❌
+
+Respond ONLY with valid JSON: { "hooks": [...] }`
+        });
+        const match = response.match(/\{[\s\S]*\}/);
+        if (match) {
+            let hooks = JSON.parse(match[0]).hooks || [];
+            // Replace character name with {{char}} in hooks
+            if (charData.name) {
+                const nameRegex = new RegExp(`\\b${charData.name}\\b`, 'gi');
+                hooks = hooks.map(hook => hook.replace(nameRegex, '{{char}}'));
+            }
+            // Replace persona name with {{user}} in hooks - use the aggressive replacement function
+            hooks = hooks.map(hook => {
+                // Multiple passes to catch all instances
+                hook = replacePersonaNames(hook, personaData, charData);
+                hook = replacePersonaNames(hook, personaData, charData); // Second pass
+                hook = replacePersonaNames(hook, personaData, charData); // Third pass
+                return hook;
+            });
+            // Normalize placeholders and ensure no character names leak through
+            hooks = hooks.map(hook => {
+                // Replace any remaining character name references
+                if (charData.name && charData.name !== '{{char}}' && charData.name.trim()) {
+                    const charNameRegex = new RegExp(`\\b${charData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+                    hook = hook.replace(charNameRegex, '{{char}}');
+                }
+                // Replace common incorrect names that might appear - "SillyTavern System" is a character name bug, should be {{char}}
+                hook = hook.replace(/\bSillyTavern System\b/gi, '{{char}}');
+                hook = hook.replace(/\bSillyTavern\b/gi, '{{char}}');
+                hook = hook.replace(/\{\{user\}\}/gi, '{{user}}');
+                hook = hook.replace(/\{\{char\}\}/gi, '{{char}}');
+                return hook;
+            });
+            console.log(`[Ultimate Persona] Generated ${hooks.length} greeting hooks (requested ${hookCount})`);
+            return hooks.slice(0, hookCount);
+        }
+    } catch (e) {
+        console.error('[Ultimate Persona] Greeting hook generation error:', e);
+        throw e;
+    }
+    // Fallback hooks if AI fails - use {{char}} placeholder
+    const fallbackHooks = [
+        `{{char}} and {{user}} cross paths unexpectedly.`,
+        `A mutual acquaintance introduces {{char}} to {{user}}.`,
+        `{{char}} and {{user}} are forced to cooperate on a task.`,
+        `A misunderstanding sparks interaction between {{char}} and {{user}}.`,
+        `{{char}} and {{user}} compete for the same goal.`,
+        `{{char}} saves {{user}} from danger.`,
+        `{{char}} and {{user}} share a secret neither expected.`,
+        `A chance meeting changes everything for {{char}} and {{user}}.`
     ];
     return fallbackHooks.slice(0, hookCount);
 }
@@ -1209,7 +1401,7 @@ How they generally act in social situations.`;
             prompt,
             systemPrompt: `Create a standalone character profile. This is a CHARACTER SHEET - describe WHO they ARE, not story possibilities. No plot hooks or "adventures might include" type content.`,
         });
-        
+
         // Extract name if AI generated one
         let finalName = personaData.name;
         if (!finalName) {
@@ -1217,7 +1409,7 @@ How they generally act in social situations.`;
             if (nameMatch) finalName = nameMatch[1].trim();
             else finalName = 'New Persona';
         }
-        
+
         return { name: finalName, description: response.trim() };
     } catch (e) {
         throw new Error('Failed to generate persona.');
@@ -1686,7 +1878,7 @@ async function showUltimatePersonaPopup() {
             useCustomHook: false,
             outputOption: 'persona-only', narrationStyle: settings.defaultNarration,
             plotMode: settings.defaultPlotMode, auType: '', nsfwType: '',
-            personaAvatarId: null, generatedGreeting: '',
+            personaAvatarId: null, generatedGreeting: '', length: 'medium',
         };
 
         let currentStep = 1;
@@ -2405,11 +2597,26 @@ async function showUltimatePersonaPopup() {
                     updateStepDisplay();
 
                     try {
-                        state.generatedGreeting = await generateAlternateGreeting(state.charData, hook, state.narrationStyle);
+                        // Use standard prompt builder for higher quality
+                        const prompt = buildGreetingPrompt({
+                            charData: state.charData,
+                            storyType: state.plotMode === 'au' ? 'au' : (state.plotMode === 'nsfw' ? 'nsfw' : 'canon'),
+                            auType: state.auType,
+                            nsfwScenario: state.nsfwType,
+                            plotHook: hook,
+                            relationship: state.dynamicType,
+                            narrationStyle: state.narrationStyle,
+                            length: state.length,
+                            personaData: { name: finalName, description: finalDescription },
+                            personaFocus: 'balanced'
+                        });
+
+                        state.generatedGreeting = await generateGreetingFromPrompt(prompt, state.charData, { name: finalName });
                         dlg.find('#up_greeting_preview').val(state.generatedGreeting);
                     } catch (e) {
+                        console.error(e);
                         dlg.find('#up_greeting_preview').val('Failed to generate. You can write your own.');
-                        toastr.error('Greeting generation failed');
+                        toastr.error('Greeting generation failed: ' + e.message);
                     }
                 } else {
                     showSuccessScreen(dlg, finalName, state.personaAvatarId, state);
@@ -2421,15 +2628,94 @@ async function showUltimatePersonaPopup() {
         // Step 9 handlers (Greeting)
         dlg.find('#up_back_to_persona').on('click', () => { currentStep = 8; updateStepDisplay(); });
 
+        // Length selector
+        dlg.on('click', '.ugw-length-option', function () {
+            dlg.find('.ugw-length-option').removeClass('selected');
+            $(this).addClass('selected');
+            state.length = $(this).data('length');
+        });
+
+        // Quick Enhance Handlers
+        dlg.find('#up_more_description').on('click', async function () {
+            const current = dlg.find('#up_greeting_preview').val();
+            if (!current) return;
+            setButtonLoading($(this), true);
+            try {
+                const enhanced = await enhanceGreetingDescription(current, state.charData);
+                dlg.find('#up_greeting_preview').val(enhanced.trim());
+                toastr.success('Added more description!');
+            } catch (e) { toastr.error('Failed to enhance'); }
+            setButtonLoading($(this), false);
+        });
+
+        dlg.find('#up_more_dialogue').on('click', async function () {
+            const current = dlg.find('#up_greeting_preview').val();
+            if (!current) return;
+            setButtonLoading($(this), true);
+            try {
+                const enhanced = await enhanceGreetingDialogue(current, state.charData);
+                dlg.find('#up_greeting_preview').val(enhanced.trim());
+                toastr.success('Added more dialogue!');
+            } catch (e) { toastr.error('Failed to enhance'); }
+            setButtonLoading($(this), false);
+        });
+
+        dlg.find('#up_more_persona').on('click', async function () {
+            const current = dlg.find('#up_greeting_preview').val();
+            const personaDummy = { name: dlg.find('#up_final_name').val(), description: dlg.find('#up_final_description').val() };
+            if (!current) return;
+            setButtonLoading($(this), true);
+            try {
+                const enhanced = await enhanceGreetingPersona(current, state.charData, personaDummy);
+                dlg.find('#up_greeting_preview').val(enhanced.trim());
+                toastr.success('Added more persona!');
+            } catch (e) { toastr.error('Failed to enhance'); }
+            setButtonLoading($(this), false);
+        });
+
+        dlg.find('#up_adjust_tone').on('click', async function () {
+            const current = dlg.find('#up_greeting_preview').val();
+            if (!current) return;
+            const tone = await Popup.show.input('Adjust Tone', 'What tone? (e.g., darker, romantic, funny)');
+            if (!tone) return;
+            setButtonLoading($(this), true);
+            try {
+                const adjusted = await adjustGreetingTone(current, state.charData, tone);
+                dlg.find('#up_greeting_preview').val(adjusted.trim());
+                toastr.success('Tone adjusted!');
+            } catch (e) { toastr.error('Failed'); }
+            setButtonLoading($(this), false);
+        });
+
         dlg.find('#up_regen_greeting').on('click', async function () {
             const hook = getFinalHook();
             if (!hook) { toastr.warning('No hook available'); return; }
             setButtonLoading($(this), true);
             try {
-                state.generatedGreeting = await generateAlternateGreeting(state.charData, hook, state.narrationStyle);
+                // Construct standard prompt
+                const personaName = dlg.find('#up_final_name').val().trim();
+                const personaDesc = dlg.find('#up_final_description').val().trim();
+
+                const prompt = buildGreetingPrompt({
+                    charData: state.charData,
+                    storyType: state.plotMode === 'au' ? 'au' : (state.plotMode === 'nsfw' ? 'nsfw' : 'canon'),
+                    auType: state.auType,
+                    nsfwScenario: state.nsfwType,
+                    plotHook: hook,
+                    relationship: state.dynamicType,
+                    narrationStyle: state.narrationStyle,
+                    length: state.length,
+                    personaData: { name: personaName, description: personaDesc },
+                    personaFocus: 'balanced'
+                });
+
+                state.generatedGreeting = await generateGreetingFromPrompt(prompt, state.charData, { name: personaName });
                 dlg.find('#up_greeting_preview').val(state.generatedGreeting);
                 toastr.success('Regenerated!');
-            } catch (e) { toastr.error('Failed'); }
+            } catch (e) {
+                console.error(e);
+                toastr.error('Failed: ' + e.message);
+            }
             setButtonLoading($(this), false);
         });
 
@@ -2536,11 +2822,2789 @@ async function showUltimatePersonaPopup() {
     }
 }
 
+// ==================== GREETING WIZARD FUNCTIONS ====================
+
+// Analyze character's existing greetings to understand their style
+function analyzeGreetingStyle(charData) {
+    const greetings = charData.alternate_greetings || [];
+    const firstMes = charData.first_mes || '';
+
+    let totalLength = firstMes.length;
+    let dialogueCount = 0;
+    let descriptionCount = 0;
+    let samples = [];
+
+    // Analyze first message
+    if (firstMes) {
+        dialogueCount += (firstMes.match(/["'「」『』]/g) || []).length / 2;
+        descriptionCount += (firstMes.match(/\*[^*]+\*/g) || []).length;
+        samples.push(firstMes.substring(0, 200));
+    }
+
+    // Analyze alternate greetings
+    greetings.forEach(g => {
+        totalLength += g.length;
+        dialogueCount += (g.match(/["'「」『』]/g) || []).length / 2;
+        descriptionCount += (g.match(/\*[^*]+\*/g) || []).length;
+        if (samples.length < 3) samples.push(g.substring(0, 200));
+    });
+
+    const avgLength = totalLength / (greetings.length + 1);
+    const avgDialogue = dialogueCount / (greetings.length + 1);
+    const avgDescription = descriptionCount / (greetings.length + 1);
+
+    return {
+        averageLength: avgLength,
+        dialogueHeavy: avgDialogue > avgDescription,
+        descriptionHeavy: avgDescription > avgDialogue,
+        greetingCount: greetings.length,
+        samples: samples,
+        hasFirstMes: !!firstMes,
+    };
+}
+
+// Build greeting generation prompt
+function buildGreetingPrompt(options) {
+    const {
+        charData,
+        charAnalysis,
+        greetingStyle,
+        storyType,
+        auType,
+        nsfwScenario,
+        premise,
+        plotHook,
+        relationship,
+        location,
+        storyBeats,
+        customScenario,
+        narrationStyle,
+        length,
+        tones,
+        nsfwTones,
+        canonConflicts,
+        canonTensions,
+        additionalInstructions,
+        personaData,
+        personaFocus,
+    } = options;
+
+    const lengthGuide = {
+        short: '1-2 paragraphs (100-200 words)',
+        medium: '3-4 paragraphs (250-400 words)',
+        long: '5+ paragraphs (500+ words)',
+    };
+
+    const styleText = {
+        first: 'first person (I/me)',
+        second: 'second person (you)',
+        third: 'third person (he/she/they)',
+        mixed: 'natural narrative mixing perspectives as appropriate',
+    }[narrationStyle] || 'natural narrative';
+
+    let prompt = `Write an alternate greeting for {{char}}.
+
+===== TEMPLATE FORMATTING (MANDATORY) =====
+You MUST use these exact placeholders:
+- {{char}} = the character (use this EXACT placeholder, never their actual name)
+- {{user}} = the user/persona (use this EXACT placeholder, never any name)
+
+CHARACTER INFORMATION:
+Name: {{char}}
+Description: ${charData.description || 'Not provided'}
+Personality: ${charData.personality || 'Not provided'}
+Scenario: ${charData.scenario || 'Not provided'}
+
+CRITICAL: Always refer to the character as {{char}} in the greeting, never use their actual name. Always refer to the user as {{user}}, never use any name.
+`;
+
+    // Add persona info if provided - ALWAYS use {{user}} placeholder, NEVER include persona names
+    if (personaData) {
+        // Sanitize persona description to remove ANY persona names - the AI should NEVER see them
+        let personaDesc = sanitizePersonaText(personaData.description || 'Not provided', personaData);
+
+        prompt += `PERSONA INFORMATION:
+Description: ${personaDesc}
+
+IMPORTANT INSTRUCTIONS FOR PERSONA INTERACTION:
+- You are generating a greeting specifically for {{user}} (the persona above).
+- The interaction must reflect the unique chemistry between {{char}} and {{user}}.
+- Incorporate {{user}}'s physical traits or personality where natural (e.g., {{char}} noticing a specific feature or reacting to their vibe).
+- The tone should heavily depend on the relationship (${relationship || 'neutral'}) and the persona's nature.
+- Avoid generic greetings; make it personal to {{user}}.
+
+${personaFocus === 'featured' ? 'IMPORTANT: Feature {{user}} prominently, reference their specific traits and personality throughout the greeting.' : ''}
+${personaFocus === 'minimal' ? 'NOTE: Keep {{user}} references brief, focus primarily on the character.' : ''}
+
+===== MANDATORY TEMPLATE: {{user}} =====
+The user/persona MUST be referred to as {{user}} - this is the DEFAULT TEMPLATE.
+- {{user}} is the REQUIRED placeholder - use it EXACTLY as shown
+- NEVER write any actual name (Bob, John, Alice, etc.) - ONLY write {{user}}
+- NEVER use "you" or any pronoun - ONLY write {{user}}
+- {{user}} is the template - write it literally in your response
+- If you write any name instead of {{user}}, you have made an error
+`;
+    } else {
+        prompt += `===== MANDATORY TEMPLATE: {{user}} =====
+The user MUST be referred to as {{user}} - this is the DEFAULT TEMPLATE.
+- {{user}} is the REQUIRED placeholder - use it EXACTLY as shown
+- NEVER write any actual name (Bob, John, Alice, etc.) - ONLY write {{user}}
+- NEVER use "you" or any pronoun - ONLY write {{user}}
+- {{user}} is the template - write it literally in your response
+- If you write any name instead of {{user}}, you have made an error
+`;
+    }
+
+    // Story type context
+    prompt += `STORY TYPE: ${storyType.toUpperCase()}
+`;
+
+    if (storyType === 'canon') {
+        prompt += `Stay true to the character's established world, lore, and personality. The greeting should feel like it could exist in their universe. Reference their canon setting, relationships, and circumstances.
+
+`;
+        // Add canon-specific conflicts and tensions
+        if (canonConflicts && canonConflicts.length > 0) {
+            prompt += `INCORPORATE THESE CANON CONFLICTS: ${canonConflicts.join('; ')}
+`;
+        }
+        if (canonTensions && canonTensions.length > 0) {
+            prompt += `UNDERLYING TENSIONS TO WEAVE IN: ${canonTensions.join('; ')}
+`;
+        }
+    } else if (storyType === 'au') {
+        prompt += `Alternate Universe setting. Focus on the character's core personality and appearance in a new context. Their mannerisms, speech patterns, and fundamental traits should remain recognizable even in this new setting.
+`;
+        // Add AU type details
+        if (auType) {
+            const auInfo = (offlineData.auTypes || []).find(a => a.id === auType);
+            if (auInfo) {
+                prompt += `AU TYPE: ${auInfo.name} - ${auInfo.description}
+Place the character in this ${auInfo.name} setting while maintaining their core identity.
+
+`;
+            }
+        }
+    } else if (storyType === 'nsfw') {
+        prompt += `Romantic/intimate encounter. Focus on tension, chemistry, and emotional/physical connection. Keep the character's personality authentic while exploring romantic and sensual themes.
+`;
+        // Add NSFW scenario details
+        if (nsfwScenario) {
+            const nsfwInfo = (offlineData.nsfwScenarios || []).find(n => n.id === nsfwScenario);
+            if (nsfwInfo) {
+                const isExplicit = nsfwInfo.id && nsfwInfo.id.startsWith('explicit_');
+                prompt += `SCENARIO TYPE: ${nsfwInfo.name} - ${nsfwInfo.description}
+Build the scene around this "${nsfwInfo.name}" dynamic.
+${isExplicit ? `
+EXPLICIT CONTENT: This scenario should include explicit, detailed descriptions of physical intimacy, sexual acts, and sensual encounters. Be graphic and detailed in describing the physical aspects while maintaining character authenticity and emotional depth.` : ''}
+
+`;
+            }
+        }
+        // Add NSFW-specific tones
+        if (nsfwTones && nsfwTones.length > 0) {
+            prompt += `INTIMATE TONE: The scene should feel ${nsfwTones.join(', ')}.
+`;
+        }
+    }
+
+    // Premise and scenario - ENHANCED for better adherence
+    prompt += `
+===== SCENARIO (CRITICAL - FOLLOW THIS CLOSELY) =====
+`;
+    // Plot hook takes priority if provided
+    if (plotHook) {
+        prompt += `PLOT HOOK (PRIMARY SCENARIO):
+${plotHook}
+
+This plot hook is the CORE of the greeting. Build the entire scene around this specific scenario. Always refer to the user as {{user}}.
+`;
+    } else if (premise?.name) {
+        prompt += `PREMISE: "${premise.name}"
+Description: ${premise.description}
+${premise.setup ? `Setup: ${premise.setup}` : ''}
+
+This premise is the CORE of the greeting. The entire scene should revolve around this specific situation. Always refer to the user as {{user}}.
+`;
+    }
+    if (relationship) {
+        prompt += `
+RELATIONSHIP DYNAMIC: ${relationship}
+The interaction should clearly reflect this relationship between {{char}} and {{user}}.
+`;
+    }
+    if (location) {
+        prompt += `
+SETTING/LOCATION: ${location}
+Describe this environment and use it to set the mood.
+`;
+    }
+    if (storyBeats && storyBeats.length > 0) {
+        prompt += `
+STORY BEATS TO INCLUDE:
+${storyBeats.map((beat, i) => `${i + 1}. ${beat}`).join('\n')}
+
+These beats should naturally occur within the greeting.
+`;
+    }
+    if (customScenario && !plotHook) {
+        prompt += `
+ADDITIONAL SCENARIO CONTEXT:
+${customScenario}
+`;
+    }
+    prompt += `=====
+
+`;
+
+    // Style guidance
+    prompt += `STYLE REQUIREMENTS:
+- Length: ${lengthGuide[length] || lengthGuide.medium}
+- Narration: ${styleText}
+- Tone: ${tones && tones.length > 0 ? tones.join(', ') : 'Match the character\'s usual tone'}
+`;
+
+    // Existing greeting analysis
+    if (greetingStyle && greetingStyle.samples.length > 0) {
+        prompt += `
+STYLE REFERENCE (match this style):
+The character's existing greetings average ${Math.round(greetingStyle.averageLength)} characters.
+They tend to be ${greetingStyle.dialogueHeavy ? 'dialogue-heavy' : greetingStyle.descriptionHeavy ? 'description-heavy' : 'balanced between dialogue and description'}.
+Sample excerpt: "${greetingStyle.samples[0]}..."
+`;
+    }
+
+    if (additionalInstructions) {
+        prompt += `
+ADDITIONAL INSTRUCTIONS: ${additionalInstructions}
+`;
+    }
+
+    prompt += `
+Write the greeting now. Write ONLY the greeting text, no commentary or headers. The greeting should be written from {{char}}'s perspective, introducing a scene where {{user}} encounters {{char}}.
+
+===== FINAL REMINDER: USE TEMPLATES =====
+- Write {{char}} to refer to the character (never their actual name)
+- Write {{user}} to refer to the user/persona (never any name)
+- These are TEMPLATE PLACEHOLDERS - write them exactly as shown: {{char}} and {{user}}
+- {{user}} is the DEFAULT TEMPLATE - use it, don't replace it with names`;
+
+    return prompt;
+}
+
+// Generate greeting using AI
+async function generateGreetingFromPrompt(prompt, charData, personaData = null) {
+    try {
+        const charName = charData.name || 'the character';
+        const response = await generateRaw({
+            prompt,
+            systemPrompt: `You are writing an alternate greeting for {{char}}. 
+Capture {{char}}'s voice, speech patterns, and personality authentically.
+Write an immersive scene that draws the reader in.
+Use the format and style of the character's existing content as reference.
+
+===== MANDATORY TEMPLATE FORMATTING =====
+You MUST use these exact placeholders - they are TEMPLATES, not suggestions:
+
+1. {{char}} = Use this EXACT placeholder to refer to the character. Do NOT use the character's actual name.
+2. {{user}} = Use this EXACT placeholder to refer to the user/persona. Do NOT use any name, persona name, or "you".
+
+===== CRITICAL RULES =====
+- {{user}} is the DEFAULT TEMPLATE for referring to the user - use it ALWAYS
+- NEVER generate any actual names (Bob, John, Alice, etc.) - ONLY use {{user}}
+- NEVER use "you" or any pronoun - ONLY use {{user}}
+- {{char}} and {{user}} are TEMPLATE PLACEHOLDERS - write them exactly as shown
+- If you write any name instead of {{user}}, you have made an error
+- The greeting MUST contain {{user}} to refer to the user - no exceptions
+- Do not include any meta-commentary, just the greeting itself.
+
+EXAMPLE CORRECT USAGE:
+"{{char}} looks up and sees {{user}} standing there."
+"{{char}} turns to {{user}} with a smile."
+
+EXAMPLE INCORRECT USAGE (DO NOT DO THIS):
+"{{char}} looks up and sees Bob standing there." ❌ WRONG
+"{{char}} turns to you with a smile." ❌ WRONG
+"{{char}} looks up and sees the person standing there." ❌ WRONG
+
+You MUST use {{user}} - it is the required template.`,
+        });
+        // Replace character name with {{char}} and persona names with {{user}}
+        let result = response.trim();
+
+        // Collect persona names for verification logging
+        const personaNames = [];
+        if (personaData && personaData.name && personaData.name !== '{{user}}') personaNames.push(personaData.name);
+        if (typeof user_avatar !== 'undefined' && user_avatar && user_avatar.name && user_avatar.name !== '{{user}}') personaNames.push(user_avatar.name);
+        if (typeof name1 !== 'undefined' && name1 && name1 !== '{{user}}') personaNames.push(name1);
+
+        // Replace character name (case-insensitive) with {{char}} - be very aggressive
+        if (charData.name && charData.name.trim()) {
+            const escapedCharName = charData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const charNameRegex = new RegExp(`\\b${escapedCharName}\\b`, 'gi');
+            result = result.replace(charNameRegex, '{{char}}');
+            // Also replace with quotes and punctuation
+            result = result.replace(new RegExp(`"${escapedCharName}"`, 'gi'), '"{{char}}"');
+            result = result.replace(new RegExp(`'${escapedCharName}'`, 'gi'), "'{{char}}'");
+        }
+        // Replace persona name with {{user}} - use helper function with character data for exclusion
+        // Multiple aggressive passes to catch all instances
+        result = replacePersonaNames(result, personaData, charData);
+        result = replacePersonaNames(result, personaData, charData); // Second pass
+        result = replacePersonaNames(result, personaData, charData); // Third pass
+        result = replacePersonaNames(result, personaData, charData); // Fourth pass
+        result = replacePersonaNames(result, personaData, charData); // Fifth pass
+
+        // Replace common incorrect names that might appear - "SillyTavern System" is a character name bug, should be {{char}}
+        result = result.replace(/\bSillyTavern System\b/gi, '{{char}}');
+        result = result.replace(/\bSillyTavern\b/gi, '{{char}}');
+
+        // Final aggressive pass: Look for common patterns where persona names appear
+        // Only replace if we're confident it's a user reference
+        const knownCharName = charData.name ? charData.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+
+        // Pattern: "at [Name]" or "with [Name]" etc. where Name is likely a persona
+        const userRefPattern = /\b(at|with|to|for|from|by|near|beside|behind)\s+([A-Z][a-z]{2,})(?=\s|'s|\.|,|!|\?|:|;|$)/gi;
+        result = result.replace(userRefPattern, (match, context, name) => {
+            // Skip if it's the character name
+            if (knownCharName && new RegExp(`\\b${name}\\b`, 'i').test(knownCharName)) {
+                return match;
+            }
+            // Skip common words that aren't names
+            const skipWords = ['The', 'A', 'An', 'This', 'That', 'There', 'Here', 'Where', 'When', 'What', 'Who', 'How', 'Why'];
+            if (skipWords.includes(name) || name.length < 3) {
+                return match;
+            }
+            // Only replace if we know this is a persona name OR if it's in a very specific user context
+            // For now, be conservative - only replace known persona names
+            return match;
+        });
+
+        // Log if we find potential persona names that weren't replaced
+        if (personaNames.length > 0) {
+            personaNames.forEach(pName => {
+                if (result.includes(pName) && !result.includes('{{user}}')) {
+                    console.warn(`[Ultimate Persona] Warning: Persona name "${pName}" may still be present in output`);
+                }
+            });
+        }
+
+        // Normalize {{user}} and {{char}} placeholders
+        result = result.replace(/\{\{user\}\}/gi, '{{user}}');
+        result = result.replace(/\{\{char\}\}/gi, '{{char}}');
+
+        return result;
+    } catch (e) {
+        console.error('[Ultimate Persona] Greeting generation error:', e);
+        throw new Error('Failed to generate greeting');
+    }
+}
+
+// Helper function to sanitize text by removing ALL persona names from prompts
+// This ensures the AI NEVER sees persona names
+function sanitizePersonaText(text, personaData = null) {
+    if (!text) return text;
+    let sanitized = text;
+
+    // Get all possible persona names
+    const namesToRemove = [];
+    if (personaData && personaData.name && personaData.name.trim() && personaData.name !== '{{user}}') {
+        namesToRemove.push(personaData.name);
+    }
+    if (user_avatar && user_avatar.name && user_avatar.name.trim() && user_avatar.name !== '{{user}}') {
+        namesToRemove.push(user_avatar.name);
+    }
+    if (power_user && power_user.personas) {
+        const activeAvatarId = user_avatar?.avatarId;
+        if (activeAvatarId && power_user.personas[activeAvatarId]) {
+            const activePersonaName = power_user.personas[activeAvatarId];
+            if (activePersonaName && activePersonaName.trim() && activePersonaName !== '{{user}}') {
+                namesToRemove.push(activePersonaName);
+            }
+        }
+    }
+
+    // Remove all instances of persona names
+    [...new Set(namesToRemove)].forEach(name => {
+        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        sanitized = sanitized.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), '{{user}}');
+        sanitized = sanitized.replace(new RegExp(`\\b${escaped}'s\\b`, 'gi'), "{{user}}'s");
+    });
+
+    return sanitized;
+}
+
+// Helper function to aggressively replace persona names with {{user}} in generated output
+// Helper function to aggressively replace persona names with {{user}} in generated output
+// This function uses MULTIPLE strategies to catch ALL instances of persona names
+function replacePersonaNames(text, personaData = null, charData = null) {
+    if (!text) return text;
+    let result = text;
+
+    // Collect ALL possible persona names from multiple sources
+    const personaNames = [];
+    if (personaData && personaData.name && personaData.name.trim() && personaData.name !== '{{user}}') {
+        personaNames.push(personaData.name);
+    }
+    if (typeof user_avatar !== 'undefined' && user_avatar && user_avatar.name && user_avatar.name.trim() && user_avatar.name !== '{{user}}') {
+        personaNames.push(user_avatar.name);
+    }
+    if (typeof power_user !== 'undefined' && power_user && power_user.personas) {
+        const activeAvatarId = user_avatar?.avatarId;
+        if (activeAvatarId && power_user.personas[activeAvatarId]) {
+            const activePersonaName = power_user.personas[activeAvatarId];
+            if (activePersonaName && activePersonaName.trim() && activePersonaName !== '{{user}}') {
+                personaNames.push(activePersonaName);
+            }
+        }
+        // Also check all personas
+        Object.values(power_user.personas || {}).forEach(name => {
+            if (name && name.trim() && name !== '{{user}}' && !personaNames.includes(name)) {
+                personaNames.push(name);
+            }
+        });
+    }
+
+    // Add name1 (global user name)
+    if (typeof name1 !== 'undefined' && name1 && name1.trim() && name1 !== '{{user}}' && !personaNames.includes(name1)) {
+        personaNames.push(name1);
+    }
+
+    const uniquePersonaNames = [...new Set(personaNames.filter(n => n && n.trim() && n !== '{{user}}'))];
+
+    // Get character name to exclude from replacement
+    const charName = charData?.name || '';
+    const escapedCharName = charName ? charName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+
+    // Log for debugging
+    if (uniquePersonaNames.length > 0) {
+        console.log('[Ultimate Persona] Replacing persona names:', uniquePersonaNames);
+    }
+
+    // STRATEGY 1: Replace known persona names with multiple passes and patterns
+    // Optimized: Reduced to 2 passes which is sufficient for nested cases
+    for (let pass = 0; pass < 2; pass++) {
+        uniquePersonaNames.forEach(personaName => {
+            const escaped = personaName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+            // Pattern 1: Word boundaries (most common)
+            result = result.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), '{{user}}');
+
+            // Pattern 2: Possessive forms
+            result = result.replace(new RegExp(`\\b${escaped}'s\\b`, 'gi'), "{{user}}'s");
+            result = result.replace(new RegExp(`\\b${escaped}'\\b`, 'gi'), "{{user}}'");
+
+            // Pattern 3: With quotes
+            result = result.replace(new RegExp(`"${escaped}"`, 'gi'), '"{{user}}"');
+            result = result.replace(new RegExp(`'${escaped}'`, 'gi'), "'{{user}}'");
+            result = result.replace(new RegExp(`"${escaped}'s"`, 'gi'), "\"{{user}}'s\"");
+            result = result.replace(new RegExp(`'${escaped}'s'`, 'gi'), "'{{user}}'s'");
+
+            // Pattern 4: With punctuation after
+            result = result.replace(new RegExp(`${escaped}\\.`, 'gi'), '{{user}}.');
+            result = result.replace(new RegExp(`${escaped},`, 'gi'), '{{user}},');
+            result = result.replace(new RegExp(`${escaped}!`, 'gi'), '{{user}}!');
+            result = result.replace(new RegExp(`${escaped}\\?`, 'gi'), '{{user}}?');
+            result = result.replace(new RegExp(`${escaped}:`, 'gi'), '{{user}}:');
+            result = result.replace(new RegExp(`${escaped};`, 'gi'), '{{user}};');
+
+            // Pattern 5: In parentheses
+            result = result.replace(new RegExp(`\\(${escaped}\\)`, 'gi'), '({{user}})');
+            result = result.replace(new RegExp(`\\(${escaped}'s\\)`, 'gi'), "({{user}}'s)");
+
+            // Pattern 6: After context words (prepositions, verbs)
+            const contextWords = ['at', 'with', 'to', 'for', 'from', 'by', 'near', 'beside', 'behind', 'sees', 'looks', 'watches', 'meets', 'greets', 'talks', 'speaks', 'says to', 'turns to', 'looks at', 'stares at', 'glances at', 'approaches', 'walks toward', 'runs toward'];
+            contextWords.forEach(context => {
+                result = result.replace(new RegExp(`\\b${context}\\s+${escaped}\\b`, 'gi'), `${context} {{user}}`);
+                result = result.replace(new RegExp(`\\b${context}\\s+${escaped}'s\\b`, 'gi'), `${context} {{user}}'s`);
+            });
+
+            // Pattern 7: Before action verbs
+            const actionVerbs = ['standing', 'sitting', 'walking', 'running', 'entering', 'leaving', 'waiting', 'standing there', 'sitting there'];
+            actionVerbs.forEach(verb => {
+                result = result.replace(new RegExp(`\\b${escaped}\\s+${verb}\\b`, 'gi'), `{{user}} ${verb}`);
+            });
+        });
+    }
+
+    // STRATEGY 2: Heuristic replacement - catch ANY capitalized word in user reference contexts
+    // This catches names we don't know about, but excludes character name
+    if (charName) {
+        // Pattern: "at/with/to [Name]" where Name is likely a persona (not character)
+        result = result.replace(/\b(at|with|to|for|from|by|near|beside|behind|sees|looks|watches|meets|greets|talks|speaks|says to|turns to|looks at|stares at|glances at|approaches|walks toward|runs toward)\s+([A-Z][a-z]{2,})(?=\s|'s|\.|,|!|\?|:|;|$)/gi, (match, context, name) => {
+            // Check for capitalization - if strictly lowercase, it's not a name (because regex is case-insensitive)
+            if (name[0] !== name[0].toUpperCase()) return match;
+
+            // Skip if it's the character name or already {{user}} or {{char}}
+            if (name === charName || name === '{{user}}' || name === '{{char}}' || name.includes('{{')) {
+                return match;
+            }
+            // Skip common words that shouldn't be replaced
+            const skipWords = ['The', 'This', 'That', 'There', 'Here', 'When', 'Where', 'What', 'Who', 'How', 'Why', 'Some', 'Many', 'Most', 'More', 'Less', 'Other', 'Another', 'Each', 'Every', 'All', 'Both', 'Either', 'Neither'];
+            if (skipWords.includes(name)) {
+                return match;
+            }
+            return `${context} {{user}}`;
+        });
+
+        // Pattern: "[Name] standing/sitting/walking" where Name is likely a persona
+        result = result.replace(/\b([A-Z][a-z]{2,})\s+(standing|sitting|walking|running|entering|leaving|waiting)(?=\s|\.|,|!|\?|:|;|$)/gi, (match, name, verb) => {
+            // Check for capitalization
+            if (name[0] !== name[0].toUpperCase()) return match;
+
+            if (name === charName || name === '{{user}}' || name === '{{char}}' || name.includes('{{')) {
+                return match;
+            }
+            const skipWords = ['The', 'This', 'That', 'There', 'Here', 'When', 'Where', 'What', 'Who', 'How', 'Why'];
+            if (skipWords.includes(name)) {
+                return match;
+            }
+            return `{{user}} ${verb}`;
+        });
+    }
+
+    // STRATEGY 3: Final safety check - if text contains user reference contexts but no {{user}}, be more aggressive
+    const userRefIndicators = ['at the', 'with', 'turns to', 'looks at', 'approaches', 'meets', 'greets'];
+    const hasUserRef = userRefIndicators.some(indicator => result.toLowerCase().includes(indicator.toLowerCase()));
+    const hasUserPlaceholder = result.includes('{{user}}');
+
+    if (hasUserRef && !hasUserPlaceholder) {
+        // Very aggressive: replace ANY capitalized word after user reference indicators
+        result = result.replace(/\b(at|with|to|for|from|by|near|beside|behind|sees|looks|watches|meets|greets|talks|speaks|says to|turns to|looks at|stares at|glances at|approaches|walks toward|runs toward)\s+([A-Z][a-z]{2,})(?=\s|'s|\.|,|!|\?|:|;|$)/gi, (match, context, name) => {
+            // Check for capitalization
+            if (name[0] !== name[0].toUpperCase()) return match;
+
+            if (name === charName || name === '{{user}}' || name === '{{char}}' || name.includes('{{')) {
+                return match;
+            }
+            const skipWords = ['The', 'This', 'That', 'There', 'Here', 'When', 'Where', 'What', 'Who', 'How', 'Why', 'Some', 'Many', 'Most', 'More', 'Less'];
+            if (skipWords.includes(name)) {
+                return match;
+            }
+            return `${context} {{user}}`;
+        });
+    }
+
+    return result;
+}
+
+// Enhance greeting with more description
+async function enhanceGreetingDescription(greeting, charData) {
+    const prompt = `Add more vivid sensory descriptions to this greeting while maintaining the character's voice:
+
+Original:
+${greeting}
+
+Add more details about:
+- Visual descriptions of the scene and characters
+- Atmosphere and mood
+- Sensory details (sounds, smells, textures)
+
+CRITICAL: Always refer to the user as {{user}}, never use any actual name.
+
+Keep the same length but make it more immersive. Write ONLY the enhanced greeting.`;
+
+    const response = await generateRaw({
+        prompt,
+        systemPrompt: `Enhance the description while keeping ${charData.name}'s authentic voice. ALWAYS use {{user}} to refer to the user, never use actual names.`
+    });
+
+    return replacePersonaNames(response.trim(), null, charData);
+}
+
+// Enhance greeting with more dialogue
+async function enhanceGreetingDialogue(greeting, charData) {
+    const prompt = `Add more dialogue to this greeting while maintaining the character's voice:
+
+Original:
+${greeting}
+
+Add more:
+- Character speech that shows their personality
+- Internal thoughts if appropriate
+- Natural conversational flow
+
+CRITICAL: Always refer to the user as {{user}}, never use any actual name.
+
+Keep similar length but shift balance toward dialogue. Write ONLY the enhanced greeting.`;
+
+    const response = await generateRaw({
+        prompt,
+        systemPrompt: `Add dialogue while keeping ${charData.name}'s authentic speech patterns. ALWAYS use {{user}} to refer to the user, never use actual names.`
+    });
+
+    return replacePersonaNames(response.trim(), personaData, charData);
+}
+
+// Adjust greeting tone
+async function adjustGreetingTone(greeting, charData, newTone) {
+    const prompt = `Adjust the tone of this greeting to be more ${newTone} while maintaining the character's core personality:
+
+Original:
+${greeting}
+
+CRITICAL: Always refer to the user as {{user}}, never use any actual name.
+
+Make it more ${newTone} while keeping ${charData.name}'s authentic voice and the same basic scenario. Write ONLY the adjusted greeting.`;
+
+    const response = await generateRaw({
+        prompt,
+        systemPrompt: `Adjust tone while preserving ${charData.name}'s character. ALWAYS use {{user}} to refer to the user, never use actual names.`
+    });
+
+    return replacePersonaNames(response.trim(), null, charData);
+}
+
+// Enhance greeting with more persona references
+async function enhanceGreetingPersona(greeting, charData, personaData) {
+    // Sanitize persona description to remove ANY names
+    const sanitizedDesc = sanitizePersonaText(personaData.description || 'General user persona', personaData);
+
+    const prompt = `Add more references to {{user}} in this greeting:
+
+Persona Details:
+${sanitizedDesc}
+
+Original Greeting:
+${greeting}
+
+Add more:
+- References to the persona's appearance or traits
+- Character's reactions to specific aspects of the persona
+- Interactions that highlight the persona's presence
+
+CRITICAL: Always refer to the user/persona as {{user}}, never use any actual name.
+
+Write ONLY the enhanced greeting.`;
+
+    const response = await generateRaw({
+        prompt,
+        systemPrompt: `Enhance persona presence while keeping ${charData.name}'s authentic voice. ALWAYS use {{user}} to refer to the user, never use actual names.`
+    });
+
+    return replacePersonaNames(response.trim(), personaData, charData);
+}
+
+// Render greeting wizard UI helpers
+function renderPresetChips(container, presets, selectedId) {
+    container.empty();
+    presets.forEach(p => {
+        container.append(`
+            <div class="ugw-preset-chip ${selectedId === p.id ? 'selected' : ''}" 
+                 data-id="${p.id}" 
+                 data-name="${p.name}"
+                 data-desc="${p.description}"
+                 title="${p.description}">
+                ${p.name}
+            </div>
+        `);
+    });
+}
+
+function filterRelationshipsByStoryType(relationships, storyType) {
+    if (!storyType) return relationships;
+
+    // Filter relationships based on story type
+    if (storyType === 'canon') {
+        // Canon: More formal, lore-appropriate relationships
+        return relationships.filter(r =>
+            !['strangers', 'acquaintances'].includes(r.id) ||
+            ['enemies', 'rivals', 'mentor_mentee', 'servant_master', 'protector'].includes(r.id)
+        );
+    } else if (storyType === 'au') {
+        // AU: Modern, casual relationships
+        return relationships.filter(r =>
+            ['strangers', 'acquaintances', 'friends', 'best_friends', 'childhood_friends',
+                'rivals', 'coworkers', 'boss_employee', 'teacher_student', 'roommates'].includes(r.id) ||
+            r.id.startsWith('crush') || r.id.startsWith('lovers') || r.id.startsWith('ex_')
+        );
+    } else if (storyType === 'nsfw') {
+        // NSFW: Romantic/intimate relationships
+        return relationships.filter(r =>
+            ['strangers', 'acquaintances', 'friends', 'best_friends', 'childhood_friends',
+                'rivals', 'enemies', 'ex_lovers', 'crush', 'lovers', 'married'].includes(r.id)
+        );
+    }
+    return relationships;
+}
+
+function filterLocationsByStoryType(locations, storyType) {
+    if (!storyType) return locations;
+
+    // Filter locations based on story type
+    if (storyType === 'canon') {
+        // Canon: Fantasy/medieval locations
+        return locations.filter(l =>
+            ['throne_room', 'dungeon', 'battlefield', 'tavern', 'forest', 'spaceship'].includes(l.id) ||
+            !['office', 'school', 'cafe', 'restaurant', 'bar', 'gym', 'hospital', 'train', 'car', 'hotel'].includes(l.id)
+        );
+    } else if (storyType === 'au') {
+        // AU: Modern locations
+        return locations.filter(l =>
+            ['home', 'bedroom', 'kitchen', 'office', 'school', 'cafe', 'restaurant', 'bar',
+                'park', 'street', 'alley', 'library', 'gym', 'hospital', 'train', 'car', 'hotel', 'balcony'].includes(l.id)
+        );
+    } else if (storyType === 'nsfw') {
+        // NSFW: Intimate/private locations
+        return locations.filter(l =>
+            ['home', 'bedroom', 'kitchen', 'hotel', 'car', 'balcony', 'alley', 'rooftop'].includes(l.id)
+        );
+    }
+    return locations;
+}
+
+// Analyze character card for canon-specific story beats, conflicts, and tensions
+async function analyzeCanonStoryElements(charData) {
+    if (!charData) return { beats: [], conflicts: [], tensions: [] };
+
+    try {
+        const charText = `${charData.description || ''} ${charData.personality || ''} ${charData.scenario || ''} ${charData.first_mes || ''}`.trim();
+
+        if (!charText) {
+            // Return default canon elements if no character data
+            return {
+                beats: ['Character faces a challenge from their past', 'A new threat emerges in their world'],
+                conflicts: ['Enemy Approaches', 'Betrayal Revealed'],
+                tensions: ['Duty vs Desire', 'Forbidden Knowledge']
+            };
+        }
+
+        const prompt = `Analyze this character's canon information and generate canon-specific story elements:
+
+CHARACTER INFORMATION:
+${charText}
+
+Generate canon-specific story elements based on this character's established lore, world, and circumstances.
+
+Respond with JSON:
+{
+  "beats": ["story beat 1", "story beat 2", "story beat 3"],
+  "conflicts": ["conflict 1", "conflict 2", "conflict 3"],
+  "tensions": ["tension 1", "tension 2", "tension 3"]
+}
+
+Each element should be:
+- Beats: Specific story moments that could occur in this character's canon
+- Conflicts: Canon-appropriate conflicts or challenges
+- Tensions: Underlying tensions or dilemmas from their world/lore
+
+Keep them specific to this character's established universe.`;
+
+        const response = await generateRaw({
+            prompt,
+            systemPrompt: 'Analyze the character and respond ONLY with valid JSON containing beats, conflicts, and tensions arrays.'
+        });
+
+        const match = response.match(/\{[\s\S]*\}/);
+        if (match) {
+            const parsed = JSON.parse(match[0]);
+            return {
+                beats: parsed.beats || [],
+                conflicts: parsed.conflicts || [],
+                tensions: parsed.tensions || []
+            };
+        }
+    } catch (e) {
+        console.error('[Ultimate Persona] Canon analysis error:', e);
+    }
+
+    // Fallback to default
+    return {
+        beats: ['Character faces a challenge from their past', 'A new threat emerges in their world'],
+        conflicts: ['Enemy Approaches', 'Betrayal Revealed'],
+        tensions: ['Duty vs Desire', 'Forbidden Knowledge']
+    };
+}
+
+// Analyze character for canon storylines and return relevant tropes
+function analyzeCanonTropes(charData) {
+    // Use default tropes if offlineData doesn't have them
+    const defaultTropes = [
+        { id: 'enemy_approaches', name: 'Enemy Approaches', description: 'A known enemy or antagonist enters the scene', keywords: ['enemy', 'antagonist', 'villain', 'rival', 'foe'] },
+        { id: 'betrayal_revealed', name: 'Betrayal Revealed', description: 'A betrayal or secret is uncovered', keywords: ['betrayal', 'secret', 'reveal', 'truth', 'deception'] },
+        { id: 'moral_dilemma', name: 'Moral Dilemma', description: 'Character faces a difficult moral choice', keywords: ['moral', 'dilemma', 'choice', 'ethics', 'decision'] },
+        { id: 'power_struggle', name: 'Power Struggle', description: 'Conflict over authority or control', keywords: ['power', 'authority', 'control', 'leadership', 'dominance'] },
+        { id: 'forbidden_knowledge', name: 'Forbidden Knowledge', description: 'Discovery of dangerous or restricted information', keywords: ['knowledge', 'secret', 'forbidden', 'hidden', 'discovery'] },
+        { id: 'duty_vs_desire', name: 'Duty vs Desire', description: 'Conflict between obligations and personal wants', keywords: ['duty', 'desire', 'obligation', 'responsibility', 'conflict'] },
+        { id: 'rescue_mission', name: 'Rescue Mission', description: 'Character must save someone or something', keywords: ['rescue', 'save', 'mission', 'help', 'aid'] },
+        { id: 'ritual_ceremony', name: 'Ritual or Ceremony', description: 'Important ceremonial event', keywords: ['ritual', 'ceremony', 'rite', 'tradition', 'ceremonial'] },
+        { id: 'ancient_prophecy', name: 'Ancient Prophecy', description: 'Prophecy coming to fruition', keywords: ['prophecy', 'prophesy', 'foretell', 'prediction', 'omen'] },
+        { id: 'artifact_discovery', name: 'Artifact Discovery', description: 'Finding a powerful or significant object', keywords: ['artifact', 'relic', 'discovery', 'treasure', 'object'] },
+        { id: 'alliance_formed', name: 'Alliance Formed', description: 'Forming a new partnership or alliance', keywords: ['alliance', 'partnership', 'pact', 'agreement', 'union'] },
+        { id: 'war_begins', name: 'War Begins', description: 'Start of a major conflict or battle', keywords: ['war', 'battle', 'conflict', 'fight', 'combat'] },
+    ];
+
+    const allTropes = offlineData.canonTropes && offlineData.canonTropes.length > 0 ? offlineData.canonTropes : defaultTropes;
+    const charText = `${charData?.description || ''} ${charData?.personality || ''} ${charData?.scenario || ''}`.toLowerCase();
+
+    // Score tropes based on relevance to character
+    const scoredTropes = allTropes.map(trope => {
+        let score = 0;
+        const tropeKeywords = (trope.keywords || []).map(k => k.toLowerCase());
+
+        // Check if character text contains trope keywords
+        tropeKeywords.forEach(keyword => {
+            if (charText.includes(keyword)) {
+                score += 2;
+            }
+        });
+
+        // Check if trope name appears in character text
+        if (charText.includes(trope.name.toLowerCase())) {
+            score += 3;
+        }
+
+        // Give base score so all tropes are shown
+        score += 1;
+
+        return { ...trope, score };
+    });
+
+    // Sort by score and return top 12
+    return scoredTropes
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 12)
+        .map(t => ({ id: t.id || t.name, name: t.name, description: t.description }));
+}
+
+// Render scenario chips (for canon tropes, AU genres, NSFW genres)
+function renderScenarioChips(container, scenarios, selectedId) {
+    container.empty();
+    scenarios.forEach(s => {
+        const id = s.id || s.name;
+        const name = s.name;
+        const desc = s.description || '';
+        container.append(`
+            <div class="ugw-scenario-chip ${selectedId === id ? 'selected' : ''}" 
+                 data-id="${id}" 
+                 data-name="${name}"
+                 title="${desc}">
+                ${name}
+            </div>
+        `);
+    });
+}
+
+function renderBeatChips(container, beats, selectedBeats) {
+    container.empty();
+    beats.forEach(beat => {
+        const isSelected = selectedBeats.has(beat);
+        container.append(`
+            <div class="ugw-beat-chip ${isSelected ? 'selected' : ''}" data-beat="${beat}">
+                ${beat.length > 40 ? beat.substring(0, 40) + '...' : beat}
+            </div>
+        `);
+    });
+}
+
+function renderSelectedBeats(container, selectedBeats) {
+    container.empty();
+    if (selectedBeats.size === 0) return;
+
+    selectedBeats.forEach(beat => {
+        container.append(`
+            <div class="ugw-selected-beat" data-beat="${beat}">
+                <span>${beat.length > 30 ? beat.substring(0, 30) + '...' : beat}</span>
+                <i class="fa-solid fa-xmark remove-beat"></i>
+            </div>
+        `);
+    });
+}
+
+function renderToneChips(container, tones, selectedTones) {
+    container.empty();
+    tones.forEach(t => {
+        const isSelected = selectedTones.has(t.id);
+        container.append(`
+            <div class="ugw-tone-chip ${isSelected ? 'selected' : ''}" 
+                 data-id="${t.id}" 
+                 title="${t.description}">
+                ${t.name}
+            </div>
+        `);
+    });
+}
+
+function renderQuickIdeas(container, ideas) {
+    container.empty();
+    ideas.forEach(idea => {
+        // Handle both old string format and new object format
+        const isObject = typeof idea === 'object';
+        const name = isObject ? idea.name : idea;
+        const desc = isObject ? idea.description : idea;
+        const setup = isObject ? (idea.setup || '') : '';
+        const id = isObject ? idea.id : idea;
+
+        container.append(`
+            <div class="ugw-idea-chip" data-idea="${name}" data-desc="${desc}" data-setup="${setup}" data-id="${id}" title="${desc}">
+                ${name}
+            </div>
+        `);
+    });
+}
+
+function renderCanonElements(conflictContainer, tensionContainer, conflicts, tensions, selectedConflicts, selectedTensions) {
+    conflictContainer.empty();
+    tensionContainer.empty();
+
+    conflicts.forEach(c => {
+        const isSelected = selectedConflicts.has(c.id);
+        conflictContainer.append(`
+            <div class="ugw-canon-chip ${isSelected ? 'selected' : ''}" data-id="${c.id}" data-name="${c.name}" data-desc="${c.description}" title="${c.description}">
+                <i class="fa-solid fa-bolt" style="margin-right: 4px; font-size: 0.8em;"></i>${c.name}
+            </div>
+        `);
+    });
+
+    tensions.forEach(t => {
+        const isSelected = selectedTensions.has(t.id);
+        tensionContainer.append(`
+            <div class="ugw-canon-chip ${isSelected ? 'selected' : ''}" data-id="${t.id}" data-name="${t.name}" data-desc="${t.description}" title="${t.description}">
+                <i class="fa-solid fa-exclamation-triangle" style="margin-right: 4px; font-size: 0.8em;"></i>${t.name}
+            </div>
+        `);
+    });
+}
+
+function renderNsfwTones(container, tones, selected) {
+    container.empty();
+    tones.forEach(t => {
+        const isSelected = selected.has(t.id);
+        container.append(`
+            <div class="ugw-tone-chip ${isSelected ? 'selected' : ''}" data-id="${t.id}" data-name="${t.name}" title="${t.description}">
+                ${t.name}
+            </div>
+        `);
+    });
+}
+
+function renderPersonaCarousel(container, personas, selectedAvatarId) {
+    container.empty();
+    personas.forEach(p => {
+        const isSelected = selectedAvatarId === p.avatarId;
+        container.append(`
+            <div class="ugp-persona-card ${isSelected ? 'selected' : ''}" data-avatar="${p.avatarId}">
+                <img class="ugp-persona-avatar" src="/User Avatars/${encodeURIComponent(p.avatarId)}" onerror="this.src='/img/ai4.png'" alt="${p.name}">
+                <div class="ugp-persona-name">${p.name}</div>
+            </div>
+        `);
+    });
+}
+
+// ==================== GREETING-ONLY WIZARD ====================
+
+async function showGreetingWizard() {
+    try {
+        const html = await renderExtensionTemplateAsync(EXTENSION_PATH, 'greeting-wizard');
+        const dlg = $(html);
+        const settings = getSettings();
+
+        // Initialize UI
+        renderCharacterCarousel(dlg.find('#ugw_character_carousel'));
+        renderNarrationOptions(dlg.find('#ugw_narration_options'), settings.defaultNarration);
+
+        // State
+        const state = {
+            charIndex: this_chid >= 0 ? this_chid : -1,
+            charData: null,
+            greetingStyle: null,
+            storyType: '',
+            selectedScenario: '', // Selected scenario/trope/genre based on story type
+            auType: '',
+            nsfwScenario: '',
+            premiseMode: 'preset', // 'preset' or 'custom'
+            selectedPreset: null,
+            relationship: '',
+            location: '',
+            selectedBeats: new Set(),
+            customScenario: '',
+            narrationStyle: settings.defaultNarration,
+            length: 'medium',
+            selectedTones: new Set(),
+            selectedNsfwTones: new Set(),
+            selectedCanonConflicts: new Set(),
+            selectedCanonTensions: new Set(),
+            hooks: [],
+            selectedHookIndex: -1,
+            useCustomHook: false,
+            customHookText: '',
+            additionalInstructions: '',
+            generatedGreeting: '',
+        };
+
+        let currentStep = 1;
+
+        const updateSelectedDisplay = () => {
+            const name = state.charIndex >= 0 ? characters[state.charIndex]?.name : 'None';
+            dlg.find('#ugw_selected_char_name').text(name || 'None');
+        };
+        updateSelectedDisplay();
+
+        const updateStepDisplay = () => {
+            dlg.find('.ugw-step').hide();
+            dlg.find(`.ugw-step[data-step="${currentStep}"]`).show();
+            dlg.find('.up-progress-step').removeClass('active completed');
+            dlg.find('.up-progress-step').each(function () {
+                const stepNum = parseInt($(this).data('step'));
+                if (stepNum < currentStep) $(this).addClass('completed');
+                else if (stepNum === currentStep) $(this).addClass('active');
+            });
+        };
+
+        // Step 1: Character Selection
+        dlg.find('#ugw_char_search').on('input', function () {
+            renderCharacterCarousel(dlg.find('#ugw_character_carousel'), $(this).val());
+        });
+
+        dlg.find('#ugw_random_char').on('click', () => {
+            const validChars = characters.filter(c => c?.name);
+            if (validChars.length) {
+                const random = validChars[Math.floor(Math.random() * validChars.length)];
+                state.charIndex = characters.indexOf(random);
+                dlg.find('.up-char-card').removeClass('selected');
+                dlg.find(`.up-char-card[data-index="${state.charIndex}"]`).addClass('selected');
+                updateSelectedDisplay();
+                showGreetingPreview();
+            }
+        });
+
+        dlg.find('#ugw_carousel_prev').on('click', () => {
+            dlg.find('#ugw_character_carousel').scrollLeft(dlg.find('#ugw_character_carousel').scrollLeft() - 250);
+        });
+        dlg.find('#ugw_carousel_next').on('click', () => {
+            dlg.find('#ugw_character_carousel').scrollLeft(dlg.find('#ugw_character_carousel').scrollLeft() + 250);
+        });
+
+        dlg.on('click', '.up-char-card', function () {
+            dlg.find('.up-char-card').removeClass('selected');
+            $(this).addClass('selected');
+            state.charIndex = parseInt($(this).data('index'));
+            updateSelectedDisplay();
+            showGreetingPreview();
+        });
+
+        function showGreetingPreview() {
+            if (state.charIndex < 0) return;
+            const char = characters[state.charIndex];
+            if (!char) return;
+
+            const altGreetings = char.data?.alternate_greetings || [];
+            const firstMes = char.first_mes || char.data?.first_mes || '';
+
+            dlg.find('#ugw_greeting_count').text(altGreetings.length);
+
+            if (firstMes || altGreetings.length > 0) {
+                const sample = firstMes || altGreetings[0];
+                dlg.find('#ugw_greeting_sample').text(sample.substring(0, 200) + (sample.length > 200 ? '...' : ''));
+                dlg.find('#ugw_greeting_preview').show();
+            } else {
+                dlg.find('#ugw_greeting_preview').hide();
+            }
+        }
+
+        dlg.find('#ugw_next_to_type').on('click', () => {
+            if (state.charIndex < 0) {
+                toastr.warning('Please select a character');
+                return;
+            }
+            state.charData = getCharacterData(state.charIndex);
+            state.charData.alternate_greetings = characters[state.charIndex].data?.alternate_greetings || [];
+            state.greetingStyle = analyzeGreetingStyle(state.charData);
+
+            dlg.find('#ugw_char_name_display').text(state.charData.name);
+            currentStep = 2;
+            updateStepDisplay();
+        });
+
+        // Step 2: Story Type
+        dlg.find('#ugw_back_to_char').on('click', () => {
+            currentStep = 1;
+            updateStepDisplay();
+        });
+
+        dlg.on('click', '.ugw-story-card', function () {
+            dlg.find('.ugw-story-card').removeClass('selected');
+            $(this).addClass('selected');
+            state.storyType = $(this).data('type');
+            state.selectedScenario = ''; // Reset scenario selection
+
+            // Show/hide scenarios section
+            dlg.find('#ugw_scenarios_section').show();
+            dlg.find('#ugw_canon_scenarios, #ugw_au_scenarios, #ugw_nsfw_scenarios').hide();
+
+            if (state.storyType === 'canon') {
+                // For canon, hide scenario selection - we'll use character card analysis during plot hook generation
+                dlg.find('#ugw_scenarios_section').hide();
+                dlg.find('#ugw_scenarios_subtitle').text('Canon mode: Character card will be analyzed during plot hook generation');
+            } else if (state.storyType === 'au') {
+                // Show AU genres
+                const auGenres = offlineData.auTypes || [];
+                renderScenarioChips(dlg.find('#ugw_au_scenarios_chips'), auGenres, '');
+                dlg.find('#ugw_au_scenarios').show();
+                dlg.find('#ugw_scenarios_subtitle').text('Select an AU genre to expand upon');
+            } else if (state.storyType === 'nsfw') {
+                // Show NSFW genres
+                const nsfwGenres = offlineData.nsfwScenarios || [];
+                renderScenarioChips(dlg.find('#ugw_nsfw_scenarios_chips'), nsfwGenres, '');
+                dlg.find('#ugw_nsfw_scenarios').show();
+                dlg.find('#ugw_scenarios_subtitle').text('Select a romantic scenario genre to expand upon');
+            }
+        });
+
+        // Scenario selection handlers
+        // Canon scenario selection removed - using character card analysis only
+
+        dlg.on('click', '#ugw_au_scenarios_chips .ugw-scenario-chip', function () {
+            dlg.find('#ugw_au_scenarios_chips .ugw-scenario-chip').removeClass('selected');
+            $(this).addClass('selected');
+            state.selectedScenario = $(this).data('id');
+            state.auType = $(this).data('id');
+        });
+
+        dlg.on('click', '#ugw_nsfw_scenarios_chips .ugw-scenario-chip', function () {
+            dlg.find('#ugw_nsfw_scenarios_chips .ugw-scenario-chip').removeClass('selected');
+            $(this).addClass('selected');
+            state.selectedScenario = $(this).data('id');
+            state.nsfwScenario = $(this).data('id');
+        });
+
+        dlg.find('#ugw_next_to_premise').on('click', () => {
+            if (!state.storyType) {
+                toastr.warning('Please select a story type');
+                return;
+            }
+
+            // Initialize premise data - filter by story type
+            const filteredRelationships = filterRelationshipsByStoryType(offlineData.greetingRelationships || [], state.storyType);
+            const filteredLocations = filterLocationsByStoryType(offlineData.greetingLocations || [], state.storyType);
+
+            renderPresetChips(dlg.find('#ugw_relationship_presets'), filteredRelationships, '');
+            renderPresetChips(dlg.find('#ugw_trope_presets'), offlineData.greetingTropes || [], '');
+            renderPresetChips(dlg.find('#ugw_encounter_presets'), offlineData.greetingEncounters || [], '');
+            renderPresetChips(dlg.find('#ugw_relationship_chips'), filteredRelationships, '');
+            renderPresetChips(dlg.find('#ugw_location_chips'), filteredLocations, '');
+
+            // Story beats
+            const posBeats = shuffle(offlineData.positiveStoryBeats || []).slice(0, 8);
+            const negBeats = shuffle(offlineData.negativeStoryBeats || []).slice(0, 8);
+            renderBeatChips(dlg.find('#ugw_positive_beats'), posBeats, state.selectedBeats);
+            renderBeatChips(dlg.find('#ugw_negative_beats'), negBeats, state.selectedBeats);
+
+            // Tones
+            renderToneChips(dlg.find('#ugw_tone_chips'), offlineData.greetingTones || [], state.selectedTones);
+
+            // NSFW tones (if applicable)
+            if (state.storyType === 'nsfw') {
+                renderNsfwTones(dlg.find('#ugw_nsfw_tone_chips'), offlineData.nsfwTones || [], state.selectedNsfwTones);
+                dlg.find('#ugw_nsfw_tones_group').show();
+            } else {
+                dlg.find('#ugw_nsfw_tones_group').hide();
+            }
+
+            currentStep = 3;
+            updateStepDisplay();
+        });
+
+        // Step 3: Premise
+        dlg.find('#ugw_back_to_type').on('click', () => {
+            currentStep = 2;
+            updateStepDisplay();
+        });
+
+        // Premise tab switching
+        dlg.on('click', '.ugw-premise-tab', function () {
+            dlg.find('.ugw-premise-tab').removeClass('active');
+            $(this).addClass('active');
+            state.premiseMode = $(this).data('tab');
+            dlg.find('.ugw-premise-panel').removeClass('active').hide();
+            dlg.find(`.ugw-premise-panel[data-panel="${state.premiseMode}"]`).addClass('active').show();
+        });
+
+        // Preset selection
+        dlg.on('click', '#ugw_relationship_presets .ugw-preset-chip, #ugw_trope_presets .ugw-preset-chip, #ugw_encounter_presets .ugw-preset-chip', function () {
+            dlg.find('.ugw-preset-chip').removeClass('selected');
+            $(this).addClass('selected');
+            state.selectedPreset = {
+                id: $(this).data('id'),
+                name: $(this).data('name'),
+                description: $(this).data('desc'),
+            };
+            dlg.find('#ugw_preset_content').html(`
+                <div class="preset-name">${state.selectedPreset.name}</div>
+                <div class="preset-desc">${state.selectedPreset.description}</div>
+            `);
+            dlg.find('#ugw_selected_preset').show();
+        });
+
+        // Custom panel - relationship chips
+        dlg.on('click', '#ugw_relationship_chips .ugw-preset-chip', function () {
+            const isSelected = $(this).hasClass('selected');
+            dlg.find('#ugw_relationship_chips .ugw-preset-chip').removeClass('selected');
+            if (!isSelected) {
+                $(this).addClass('selected');
+                state.relationship = $(this).data('name');
+            } else {
+                state.relationship = '';
+            }
+            dlg.find('#ugw_relationship_custom').val('');
+        });
+
+        dlg.find('#ugw_relationship_custom').on('input', function () {
+            if ($(this).val().trim()) {
+                dlg.find('#ugw_relationship_chips .ugw-preset-chip').removeClass('selected');
+                state.relationship = $(this).val().trim();
+            }
+        });
+
+        // Location chips
+        dlg.on('click', '#ugw_location_chips .ugw-preset-chip', function () {
+            const isSelected = $(this).hasClass('selected');
+            dlg.find('#ugw_location_chips .ugw-preset-chip').removeClass('selected');
+            if (!isSelected) {
+                $(this).addClass('selected');
+                state.location = $(this).data('name');
+            } else {
+                state.location = '';
+            }
+            dlg.find('#ugw_location_custom').val('');
+        });
+
+        dlg.find('#ugw_location_custom').on('input', function () {
+            if ($(this).val().trim()) {
+                dlg.find('#ugw_location_chips .ugw-preset-chip').removeClass('selected');
+                state.location = $(this).val().trim();
+            }
+        });
+
+
+        // Add custom positive beat
+        dlg.find('#ugw_add_positive_beat').on('click', async function () {
+            const beat = await Popup.show.input('Add Positive Story Beat', 'Enter a positive story beat:');
+            if (!beat || !beat.trim()) return;
+
+            const beatText = beat.trim();
+            if (!offlineData.positiveStoryBeats) offlineData.positiveStoryBeats = [];
+            offlineData.positiveStoryBeats.push(beatText);
+
+            // Add to current display
+            const container = dlg.find('#ugw_positive_beats');
+            container.append(`<div class="ugw-beat-chip selected" data-beat="${beatText.replace(/"/g, '&quot;')}">${beatText}</div>`);
+            state.selectedBeats.add(beatText);
+            updateSelectedBeatsDisplay();
+            toastr.success(`Added "${beatText}" positive beat!`);
+        });
+
+        // Add custom negative beat
+        dlg.find('#ugw_add_negative_beat').on('click', async function () {
+            const beat = await Popup.show.input('Add Negative Story Beat', 'Enter a tension/conflict story beat:');
+            if (!beat || !beat.trim()) return;
+
+            const beatText = beat.trim();
+            if (!offlineData.negativeStoryBeats) offlineData.negativeStoryBeats = [];
+            offlineData.negativeStoryBeats.push(beatText);
+
+            // Add to current display
+            const container = dlg.find('#ugw_negative_beats');
+            container.append(`<div class="ugw-beat-chip selected" data-beat="${beatText.replace(/"/g, '&quot;')}">${beatText}</div>`);
+            state.selectedBeats.add(beatText);
+            updateSelectedBeatsDisplay();
+            toastr.success(`Added "${beatText}" negative beat!`);
+        });
+
+        // Story beats
+        dlg.on('click', '.ugw-beat-chip', function () {
+            const beat = $(this).data('beat');
+            if (state.selectedBeats.has(beat)) {
+                state.selectedBeats.delete(beat);
+                $(this).removeClass('selected');
+            } else {
+                state.selectedBeats.add(beat);
+                $(this).addClass('selected');
+            }
+            updateSelectedBeatsDisplay();
+        });
+
+        function updateSelectedBeatsDisplay() {
+            const container = dlg.find('#ugw_selected_beats_list');
+            renderSelectedBeats(container, state.selectedBeats);
+            dlg.find('#ugw_selected_beats_display').toggle(state.selectedBeats.size > 0);
+        }
+
+        dlg.on('click', '.remove-beat', function () {
+            const beat = $(this).parent().data('beat');
+            state.selectedBeats.delete(beat);
+            dlg.find(`.ugw-beat-chip[data-beat="${beat}"]`).removeClass('selected');
+            updateSelectedBeatsDisplay();
+        });
+
+        // Refresh beats
+        dlg.find('#ugw_refresh_positive_beats').on('click', () => {
+            const newBeats = shuffle(offlineData.positiveStoryBeats || []).slice(0, 8);
+            renderBeatChips(dlg.find('#ugw_positive_beats'), newBeats, state.selectedBeats);
+        });
+
+        dlg.find('#ugw_refresh_negative_beats').on('click', () => {
+            const newBeats = shuffle(offlineData.negativeStoryBeats || []).slice(0, 8);
+            renderBeatChips(dlg.find('#ugw_negative_beats'), newBeats, state.selectedBeats);
+        });
+
+        // Enhance scenario
+        dlg.find('#ugw_enhance_scenario').on('click', async function () {
+            // Include context from selected chips
+            const contextParts = [];
+
+            if (state.relationship) contextParts.push(`Relationship: ${state.relationship}`);
+            if (state.location) contextParts.push(`Location: ${state.location}`);
+            if (state.selectedBeats.size > 0) {
+                contextParts.push(`Key Story Beats: ${Array.from(state.selectedBeats).join(', ')}`);
+            }
+
+            const userInput = dlg.find('#ugw_scenario_custom').val().trim();
+            const fullInput = userInput
+                ? `${contextParts.length > 0 ? contextParts.join('\n') + '\n\nUser Context: ' : ''}${userInput}`
+                : contextParts.join('\n'); // Allow enhancing from just tags if input is empty
+
+            if (!fullInput) {
+                toastr.warning('Add some details or select tags first');
+                return;
+            }
+
+            $(this).prop('disabled', true).find('i').addClass('fa-spin');
+            try {
+                // Modified prompt for context-aware enhancement
+                const enhanced = await enhanceText(fullInput);
+                dlg.find('#ugw_scenario_custom').val(enhanced);
+                state.customScenario = enhanced;
+            } catch (e) {
+                console.error(e);
+                toastr.error('Failed to enhance');
+            }
+            $(this).prop('disabled', false).find('i').removeClass('fa-spin');
+        });
+
+        dlg.find('#ugw_next_to_hooks').on('click', () => {
+            state.customScenario = dlg.find('#ugw_scenario_custom').val().trim();
+
+            // Validate we have some premise info
+            if (state.premiseMode === 'preset' && !state.selectedPreset) {
+                toastr.warning('Please select a premise');
+                return;
+            }
+            if (state.premiseMode === 'custom' && !state.relationship && !state.location && state.selectedBeats.size === 0 && !state.customScenario) {
+                toastr.warning('Please add some scenario details');
+                return;
+            }
+
+            // Go to plot hooks step
+            currentStep = 4;
+            updateStepDisplay();
+        });
+
+        // Step 4: Plot Hooks
+        dlg.find('#ugw_back_to_premise').on('click', () => {
+            currentStep = 3;
+            updateStepDisplay();
+        });
+
+        // Generate plot hooks
+        dlg.find('#ugw_generate_hooks').on('click', async function () {
+            setButtonLoading($(this), true);
+            try {
+                // Build premise summary for hook generation
+                let premiseSummary = '';
+                if (state.premiseMode === 'preset' && state.selectedPreset) {
+                    premiseSummary = `${state.selectedPreset.name}: ${state.selectedPreset.description}`;
+                } else {
+                    const parts = [];
+                    if (state.relationship) parts.push(`Relationship: ${state.relationship}`);
+                    if (state.location) parts.push(`Location: ${state.location}`);
+                    if (state.selectedBeats.size > 0) {
+                        parts.push(`Story beats: ${Array.from(state.selectedBeats).join(', ')}`);
+                    }
+                    if (state.customScenario) parts.push(state.customScenario);
+                    premiseSummary = parts.join('. ') || 'A meeting between the character and {{user}}';
+                }
+
+                // Generate hooks with premise information
+                // FIX: If using preset, pass the summary as customScenario so it's included
+                const isPreset = state.premiseMode === 'preset';
+                const hooks = await generateGreetingHooks(
+                    state.charData,
+                    state.storyType,
+                    state.selectedScenario,
+                    isPreset ? '' : state.relationship,
+                    isPreset ? '' : state.location,
+                    isPreset ? [] : state.selectedBeats,
+                    isPreset ? premiseSummary : state.customScenario,
+                    null // personaData - not used in greeting-only wizard
+                );
+
+                state.hooks = hooks;
+                renderHooks(dlg.find('#ugw_hooks_list'), hooks, state.selectedHookIndex);
+
+                if (hooks.length === 0) {
+                    toastr.warning('No hooks generated. Try again.');
+                } else {
+                    toastr.success(`Generated ${hooks.length} plot hooks!`);
+                }
+            } catch (e) {
+                console.error('[Ultimate Persona] Hook generation error:', e);
+                toastr.error('Failed to generate hooks: ' + e.message);
+            } finally {
+                setButtonLoading($(this), false);
+            }
+        });
+
+        // Hook selection
+        dlg.on('click', '#ugw_hooks_list .up-hook-item', function () {
+            dlg.find('#ugw_hooks_list .up-hook-item').removeClass('selected');
+            $(this).addClass('selected');
+            state.selectedHookIndex = parseInt($(this).data('hook'));
+            state.useCustomHook = false;
+            dlg.find('#ugw_use_custom_hook').prop('checked', false);
+        });
+
+        // Custom hook checkbox
+        dlg.find('#ugw_use_custom_hook').on('change', function () {
+            state.useCustomHook = $(this).is(':checked');
+            if (state.useCustomHook) {
+                dlg.find('#ugw_hooks_list .up-hook-item').removeClass('selected');
+                state.selectedHookIndex = -1;
+            }
+        });
+
+        // Custom hook text
+        dlg.find('#ugw_custom_hook_text').on('input', function () {
+            state.customHookText = $(this).val().trim();
+        });
+
+        // Enhance hook
+        dlg.find('#ugw_enhance_hook').on('click', async function () {
+            const input = dlg.find('#ugw_custom_hook_text').val().trim();
+            if (!input) {
+                toastr.warning('Enter a hook first');
+                return;
+            }
+            $(this).prop('disabled', true).find('i').addClass('fa-spin');
+            try {
+                const enhanced = await enhanceText(input);
+                dlg.find('#ugw_custom_hook_text').val(enhanced);
+                state.customHookText = enhanced;
+            } catch (e) {
+                toastr.error('Failed to enhance');
+            }
+            $(this).prop('disabled', false).find('i').removeClass('fa-spin');
+        });
+
+        // Continue from hooks to details
+        dlg.find('#ugw_next_to_details').on('click', () => {
+            if (!state.useCustomHook && state.selectedHookIndex < 0 && state.hooks.length > 0) {
+                toastr.warning('Please select a plot hook or use a custom scenario');
+                return;
+            }
+            if (state.useCustomHook && !state.customHookText.trim()) {
+                toastr.warning('Please enter a custom hook');
+                return;
+            }
+
+            // Update summary
+            dlg.find('#ugw_summary_char').text(state.charData.name);
+            dlg.find('#ugw_summary_type').text(state.storyType.charAt(0).toUpperCase() + state.storyType.slice(1));
+
+            let premiseSummary = '';
+            if (state.useCustomHook) {
+                premiseSummary = state.customHookText;
+            } else if (state.selectedHookIndex >= 0 && state.hooks[state.selectedHookIndex]) {
+                premiseSummary = state.hooks[state.selectedHookIndex];
+            } else if (state.premiseMode === 'preset' && state.selectedPreset) {
+                premiseSummary = state.selectedPreset.name;
+            } else {
+                const parts = [];
+                if (state.relationship) parts.push(state.relationship);
+                if (state.location) parts.push(`at ${state.location}`);
+                if (state.selectedBeats.size > 0) parts.push(`${state.selectedBeats.size} story beats`);
+                premiseSummary = parts.join(', ') || 'Custom scenario';
+            }
+            dlg.find('#ugw_summary_premise').text(premiseSummary);
+
+            currentStep = 5;
+            updateStepDisplay();
+        });
+
+        // Step 5: Details
+        dlg.find('#ugw_back_to_hooks').on('click', () => {
+            currentStep = 4;
+            updateStepDisplay();
+        });
+
+        // Narration
+        dlg.on('click', '.up-narration-option', function () {
+            dlg.find('.up-narration-option').removeClass('selected');
+            $(this).addClass('selected');
+            state.narrationStyle = $(this).data('style');
+        });
+
+        // Length
+        dlg.on('click', '.ugw-length-option', function () {
+            dlg.find('.ugw-length-option').removeClass('selected');
+            $(this).addClass('selected');
+            state.length = $(this).data('length');
+        });
+
+        // Tones
+        dlg.on('click', '#ugw_tone_chips .ugw-tone-chip', function () {
+            const toneId = $(this).data('id');
+            if (state.selectedTones.has(toneId)) {
+                state.selectedTones.delete(toneId);
+                $(this).removeClass('selected');
+            } else {
+                state.selectedTones.add(toneId);
+                $(this).addClass('selected');
+            }
+        });
+
+        // NSFW Tones
+        dlg.on('click', '#ugw_nsfw_tone_chips .ugw-tone-chip', function () {
+            const toneId = $(this).data('id');
+            if (state.selectedNsfwTones.has(toneId)) {
+                state.selectedNsfwTones.delete(toneId);
+                $(this).removeClass('selected');
+            } else {
+                state.selectedNsfwTones.add(toneId);
+                $(this).addClass('selected');
+            }
+        });
+
+        // Generate greeting
+        dlg.find('#ugw_generate_greeting').on('click', async function () {
+            state.additionalInstructions = dlg.find('#ugw_additional_instructions').val().trim();
+
+            setButtonLoading($(this), true);
+            try {
+                // Get the selected plot hook
+                let plotHook = '';
+                if (state.useCustomHook) {
+                    plotHook = state.customHookText;
+                } else if (state.selectedHookIndex >= 0 && state.hooks[state.selectedHookIndex]) {
+                    plotHook = state.hooks[state.selectedHookIndex];
+                } else if (state.premiseMode === 'preset' && state.selectedPreset) {
+                    plotHook = `${state.selectedPreset.name}: ${state.selectedPreset.description}`;
+                } else {
+                    const parts = [];
+                    if (state.relationship) parts.push(`Relationship: ${state.relationship}`);
+                    if (state.location) parts.push(`Location: ${state.location}`);
+                    if (state.selectedBeats.size > 0) parts.push(`Story beats: ${Array.from(state.selectedBeats).join(', ')}`);
+                    if (state.customScenario) parts.push(state.customScenario);
+                    plotHook = parts.join('. ') || 'A meeting between the character and {{user}}';
+                }
+
+                const toneNames = Array.from(state.selectedTones).map(id => {
+                    const tone = offlineData.greetingTones.find(t => t.id === id);
+                    return tone?.name || id;
+                });
+
+                const nsfwToneNames = Array.from(state.selectedNsfwTones).map(id => {
+                    const tone = (offlineData.nsfwTones || []).find(t => t.id === id);
+                    return tone?.name || id;
+                });
+
+                const canonConflictNames = Array.from(state.selectedCanonConflicts).map(id => {
+                    const c = (offlineData.canonConflicts || []).find(c => c.id === id);
+                    return c ? `${c.name}: ${c.description}` : id;
+                });
+
+                const canonTensionNames = Array.from(state.selectedCanonTensions).map(id => {
+                    const t = (offlineData.canonTensions || []).find(t => t.id === id);
+                    return t ? `${t.name}: ${t.description}` : id;
+                });
+
+                const prompt = buildGreetingPrompt({
+                    charData: state.charData,
+                    greetingStyle: state.greetingStyle,
+                    storyType: state.storyType,
+                    auType: state.auType,
+                    nsfwScenario: state.nsfwScenario,
+                    premise: state.selectedPreset,
+                    plotHook: plotHook,
+                    relationship: state.relationship,
+                    location: state.location,
+                    storyBeats: Array.from(state.selectedBeats),
+                    customScenario: state.customScenario,
+                    narrationStyle: state.narrationStyle,
+                    length: state.length,
+                    tones: toneNames,
+                    nsfwTones: nsfwToneNames,
+                    canonConflicts: canonConflictNames,
+                    canonTensions: canonTensionNames,
+                    additionalInstructions: state.additionalInstructions,
+                });
+
+                state.generatedGreeting = await generateGreetingFromPrompt(prompt, state.charData, null);
+                dlg.find('#ugw_greeting_preview_text').val(state.generatedGreeting);
+                dlg.find('#ugw_final_char_name').text(state.charData.name);
+
+                currentStep = 6;
+                updateStepDisplay();
+            } catch (e) {
+                toastr.error(e.message);
+            } finally {
+                setButtonLoading($(this), false);
+            }
+        });
+
+        // Step 6: Review
+        dlg.find('#ugw_back_to_details').on('click', () => {
+            currentStep = 5;
+            updateStepDisplay();
+        });
+
+        // Enhancement buttons
+        dlg.find('#ugw_more_description').on('click', async function () {
+            const current = dlg.find('#ugw_greeting_preview_text').val();
+            if (!current) return;
+
+            setButtonLoading($(this), true);
+            try {
+                const enhanced = await enhanceGreetingDescription(current, state.charData);
+                dlg.find('#ugw_greeting_preview_text').val(enhanced.trim());
+                toastr.success('Added more description!');
+            } catch (e) {
+                toastr.error('Failed to enhance');
+            }
+            setButtonLoading($(this), false);
+        });
+
+        dlg.find('#ugw_more_dialogue').on('click', async function () {
+            const current = dlg.find('#ugw_greeting_preview_text').val();
+            if (!current) return;
+
+            setButtonLoading($(this), true);
+            try {
+                const enhanced = await enhanceGreetingDialogue(current, state.charData);
+                dlg.find('#ugw_greeting_preview_text').val(enhanced.trim());
+                toastr.success('Added more dialogue!');
+            } catch (e) {
+                toastr.error('Failed to enhance');
+            }
+            setButtonLoading($(this), false);
+        });
+
+        dlg.find('#ugw_adjust_tone').on('click', async function () {
+            const current = dlg.find('#ugw_greeting_preview_text').val();
+            if (!current) return;
+
+            const tone = await Popup.show.input('Adjust Tone', 'What tone would you like? (e.g., more romantic, darker, funnier)');
+            if (!tone) return;
+
+            setButtonLoading($(this), true);
+            try {
+                const adjusted = await adjustGreetingTone(current, state.charData, tone);
+                dlg.find('#ugw_greeting_preview_text').val(adjusted.trim());
+                toastr.success('Tone adjusted!');
+            } catch (e) {
+                toastr.error('Failed to adjust');
+            }
+            setButtonLoading($(this), false);
+        });
+
+        // Regenerate
+        dlg.find('#ugw_regenerate_greeting').on('click', async function () {
+            setButtonLoading($(this), true);
+            try {
+                // Get the selected plot hook
+                let plotHook = '';
+                if (state.useCustomHook) {
+                    plotHook = state.customHookText;
+                } else if (state.selectedHookIndex >= 0 && state.hooks[state.selectedHookIndex]) {
+                    plotHook = state.hooks[state.selectedHookIndex];
+                } else if (state.premiseMode === 'preset' && state.selectedPreset) {
+                    plotHook = `${state.selectedPreset.name}: ${state.selectedPreset.description}`;
+                } else {
+                    const parts = [];
+                    if (state.relationship) parts.push(`Relationship: ${state.relationship}`);
+                    if (state.location) parts.push(`Location: ${state.location}`);
+                    if (state.selectedBeats.size > 0) parts.push(`Story beats: ${Array.from(state.selectedBeats).join(', ')}`);
+                    if (state.customScenario) parts.push(state.customScenario);
+                    plotHook = parts.join('. ') || 'A meeting between the character and {{user}}';
+                }
+
+                const toneNames = Array.from(state.selectedTones).map(id => {
+                    const tone = offlineData.greetingTones.find(t => t.id === id);
+                    return tone?.name || id;
+                });
+
+                const nsfwToneNames = Array.from(state.selectedNsfwTones).map(id => {
+                    const tone = (offlineData.nsfwTones || []).find(t => t.id === id);
+                    return tone?.name || id;
+                });
+
+                const canonConflictNames = Array.from(state.selectedCanonConflicts).map(id => {
+                    const c = (offlineData.canonConflicts || []).find(c => c.id === id);
+                    return c ? `${c.name}: ${c.description}` : id;
+                });
+
+                const canonTensionNames = Array.from(state.selectedCanonTensions).map(id => {
+                    const t = (offlineData.canonTensions || []).find(t => t.id === id);
+                    return t ? `${t.name}: ${t.description}` : id;
+                });
+
+                const prompt = buildGreetingPrompt({
+                    charData: state.charData,
+                    greetingStyle: state.greetingStyle,
+                    storyType: state.storyType,
+                    auType: state.auType,
+                    nsfwScenario: state.nsfwScenario,
+                    premise: state.selectedPreset,
+                    plotHook: plotHook,
+                    relationship: state.relationship,
+                    location: state.location,
+                    storyBeats: Array.from(state.selectedBeats),
+                    customScenario: state.customScenario,
+                    narrationStyle: state.narrationStyle,
+                    length: state.length,
+                    tones: toneNames,
+                    nsfwTones: nsfwToneNames,
+                    canonConflicts: canonConflictNames,
+                    canonTensions: canonTensionNames,
+                    additionalInstructions: state.additionalInstructions,
+                });
+
+                state.generatedGreeting = await generateGreetingFromPrompt(prompt, state.charData, null);
+                dlg.find('#ugw_greeting_preview_text').val(state.generatedGreeting);
+                toastr.success('Regenerated!');
+            } catch (e) {
+                toastr.error(e.message);
+            }
+            setButtonLoading($(this), false);
+        });
+
+        // Save greeting
+        dlg.find('#ugw_save_greeting').on('click', async function () {
+            const greeting = dlg.find('#ugw_greeting_preview_text').val().trim();
+            if (!greeting) {
+                toastr.warning('Add greeting text');
+                return;
+            }
+
+            setButtonLoading($(this), true);
+            try {
+                const num = await saveAlternateGreeting(state.charIndex, greeting);
+                toastr.success(`Greeting #${num} saved to ${state.charData.name}!`);
+
+                dlg.find('#ugw_success_message').text(`Greeting #${num} has been added to ${state.charData.name}!`);
+                dlg.find('.ugw-step').hide();
+                dlg.find('.ugw-step[data-step="success"]').show().addClass('up-visible');
+                dlg.find('.up-progress-step').addClass('completed');
+
+                launchConfetti(dlg.find('#ugw_confetti_canvas')[0]);
+            } catch (e) {
+                toastr.error('Failed: ' + e.message);
+            }
+            setButtonLoading($(this), false);
+        });
+
+        // Success actions
+        dlg.find('#ugw_create_another').on('click', () => {
+            state.charIndex = -1;
+            state.charData = null;
+            state.storyType = '';
+            state.auType = '';
+            state.nsfwScenario = '';
+            state.selectedPreset = null;
+            state.relationship = '';
+            state.location = '';
+            state.selectedBeats.clear();
+            state.selectedTones.clear();
+            state.selectedNsfwTones.clear();
+            state.selectedCanonConflicts.clear();
+            state.selectedCanonTensions.clear();
+            state.customScenario = '';
+            dlg.find('.ugw-step').removeClass('up-visible');
+            dlg.find('.up-progress-step').removeClass('completed');
+            dlg.find('.ugw-preset-chip, .ugw-beat-chip, .ugw-tone-chip, .ugw-story-card, .ugw-idea-chip, .ugw-canon-chip, .up-au-option, .up-nsfw-option').removeClass('selected');
+            dlg.find('#ugw_selected_preset, #ugw_selected_beats_display, #ugw_quick_ideas, #ugw_canon_elements, #ugw_au_elements, #ugw_nsfw_elements, #ugw_nsfw_tones_group').hide();
+            dlg.find('#ugw_scenario_custom').val('');
+            currentStep = 1;
+            updateStepDisplay();
+            updateSelectedDisplay();
+        });
+
+        dlg.find('#ugw_close_wizard').on('click', () => {
+            $('.popup-button-cancel').trigger('click');
+        });
+
+        updateStepDisplay();
+        await callGenericPopup(dlg, POPUP_TYPE.TEXT, '', { wide: true, large: true, okButton: false, cancelButton: 'Close', allowVerticalScrolling: true });
+    } catch (e) {
+        console.error('[Ultimate Persona] Greeting wizard error:', e);
+        toastr.error('Failed to open: ' + e.message);
+    }
+}
+
+// ==================== PERSONA-BASED GREETING WIZARD ====================
+
+async function showPersonaGreetingWizard() {
+    try {
+        const html = await renderExtensionTemplateAsync(EXTENSION_PATH, 'greeting-persona');
+        const dlg = $(html);
+        const settings = getSettings();
+
+        // Get personas
+        const personas = getAllPersonas();
+        if (personas.length === 0) {
+            toastr.warning('No personas found. Create a persona first!');
+            return;
+        }
+
+        // Initialize UI
+        renderPersonaCarousel(dlg.find('#ugp_persona_carousel'), personas, '');
+        renderNarrationOptions(dlg.find('#ugp_narration_options'), settings.defaultNarration);
+
+        // State
+        const state = {
+            selectedPersona: null,
+            charIndex: this_chid >= 0 ? this_chid : -1,
+            charData: null,
+            greetingStyle: null,
+            storyType: '',
+            selectedScenario: '', // Selected scenario/trope/genre based on story type
+            auType: '',
+            nsfwScenario: '',
+            premiseMode: 'preset',
+            selectedPreset: null,
+            relationship: '',
+            location: '',
+            selectedBeats: new Set(),
+            customScenario: '',
+            narrationStyle: settings.defaultNarration,
+            length: 'medium',
+            selectedTones: new Set(),
+            selectedNsfwTones: new Set(),
+            selectedCanonConflicts: new Set(),
+            selectedCanonTensions: new Set(),
+            hooks: [],
+            selectedHookIndex: -1,
+            useCustomHook: false,
+            customHookText: '',
+            personaFocus: 'balanced',
+            additionalInstructions: '',
+            generatedGreeting: '',
+        };
+
+        let currentStep = 1;
+
+        const updateStepDisplay = () => {
+            dlg.find('.ugp-step').hide();
+            dlg.find(`.ugp-step[data-step="${currentStep}"]`).show();
+            dlg.find('.up-progress-step').removeClass('active completed');
+            dlg.find('.up-progress-step').each(function () {
+                const stepNum = parseInt($(this).data('step'));
+                if (stepNum < currentStep) $(this).addClass('completed');
+                else if (stepNum === currentStep) $(this).addClass('active');
+            });
+        };
+
+        // Step 1: Persona Selection
+        dlg.find('#ugp_persona_search').on('input', function () {
+            const search = $(this).val().toLowerCase();
+            dlg.find('.ugp-persona-card').each(function () {
+                const name = $(this).find('.ugp-persona-name').text().toLowerCase();
+                $(this).toggle(name.includes(search));
+            });
+        });
+
+        dlg.find('#ugp_persona_prev').on('click', () => {
+            dlg.find('#ugp_persona_carousel').scrollLeft(dlg.find('#ugp_persona_carousel').scrollLeft() - 250);
+        });
+        dlg.find('#ugp_persona_next').on('click', () => {
+            dlg.find('#ugp_persona_carousel').scrollLeft(dlg.find('#ugp_persona_carousel').scrollLeft() + 250);
+        });
+
+        dlg.on('click', '.ugp-persona-card', function () {
+            dlg.find('.ugp-persona-card').removeClass('selected');
+            $(this).addClass('selected');
+            const avatarId = $(this).data('avatar');
+            state.selectedPersona = personas.find(p => p.avatarId === avatarId);
+            dlg.find('#ugp_selected_persona_name').text(state.selectedPersona?.name || 'None');
+
+            // Show preview
+            if (state.selectedPersona) {
+                const desc = state.selectedPersona.description || 'No description available';
+                dlg.find('#ugp_persona_preview_content').text(desc.substring(0, 300) + (desc.length > 300 ? '...' : ''));
+                dlg.find('#ugp_persona_preview').show();
+            }
+        });
+
+        dlg.find('#ugp_next_to_char').on('click', () => {
+            if (!state.selectedPersona) {
+                toastr.warning('Please select a persona');
+                return;
+            }
+
+            // Initialize character carousel
+            renderCharacterCarousel(dlg.find('#ugp_character_carousel'));
+
+            currentStep = 2;
+            updateStepDisplay();
+        });
+
+        // Step 2: Character Selection
+        dlg.find('#ugp_back_to_persona').on('click', () => {
+            currentStep = 1;
+            updateStepDisplay();
+        });
+
+        dlg.find('#ugp_char_search').on('input', function () {
+            renderCharacterCarousel(dlg.find('#ugp_character_carousel'), $(this).val());
+        });
+
+        dlg.find('#ugp_random_char').on('click', () => {
+            const validChars = characters.filter(c => c?.name);
+            if (validChars.length) {
+                const random = validChars[Math.floor(Math.random() * validChars.length)];
+                state.charIndex = characters.indexOf(random);
+                dlg.find('.up-char-card').removeClass('selected');
+                dlg.find(`.up-char-card[data-index="${state.charIndex}"]`).addClass('selected');
+                updateCharDisplay();
+            }
+        });
+
+        dlg.find('#ugp_carousel_prev').on('click', () => {
+            dlg.find('#ugp_character_carousel').scrollLeft(dlg.find('#ugp_character_carousel').scrollLeft() - 250);
+        });
+        dlg.find('#ugp_carousel_next').on('click', () => {
+            dlg.find('#ugp_character_carousel').scrollLeft(dlg.find('#ugp_character_carousel').scrollLeft() + 250);
+        });
+
+        dlg.on('click', '.up-char-card', function () {
+            dlg.find('.up-char-card').removeClass('selected');
+            $(this).addClass('selected');
+            state.charIndex = parseInt($(this).data('index'));
+            updateCharDisplay();
+        });
+
+        function updateCharDisplay() {
+            const name = state.charIndex >= 0 ? characters[state.charIndex]?.name : 'None';
+            dlg.find('#ugp_selected_char_name').text(name || 'None');
+
+            // Show pairing preview
+            if (state.selectedPersona && state.charIndex >= 0) {
+                const char = characters[state.charIndex];
+                dlg.find('#ugp_pairing_persona_name').text(state.selectedPersona.name);
+                dlg.find('#ugp_pairing_persona_img').attr('src', `/User Avatars/${encodeURIComponent(state.selectedPersona.avatarId)}`);
+                dlg.find('#ugp_pairing_char_name').text(char.name);
+                dlg.find('#ugp_pairing_char_img').attr('src', char.avatar ? `/characters/${encodeURIComponent(char.avatar)}` : '/img/ai4.png');
+                dlg.find('#ugp_pairing_preview').show();
+
+                // Greeting preview
+                const altGreetings = char.data?.alternate_greetings || [];
+                const firstMes = char.first_mes || char.data?.first_mes || '';
+                dlg.find('#ugp_greeting_count').text(altGreetings.length);
+                if (firstMes || altGreetings.length > 0) {
+                    const sample = firstMes || altGreetings[0];
+                    dlg.find('#ugp_greeting_sample').text(sample.substring(0, 200) + (sample.length > 200 ? '...' : ''));
+                    dlg.find('#ugp_greeting_preview').show();
+                }
+            }
+        }
+
+        dlg.find('#ugp_next_to_type').on('click', () => {
+            if (state.charIndex < 0) {
+                toastr.warning('Please select a character');
+                return;
+            }
+            state.charData = getCharacterData(state.charIndex);
+            state.charData.alternate_greetings = characters[state.charIndex].data?.alternate_greetings || [];
+            state.greetingStyle = analyzeGreetingStyle(state.charData);
+
+            dlg.find('#ugp_persona_name_display').text(state.selectedPersona.name);
+            dlg.find('#ugp_char_name_display').text(state.charData.name);
+
+            currentStep = 3;
+            updateStepDisplay();
+        });
+
+        // Step 3: Story Type (same logic as greeting wizard)
+        dlg.find('#ugp_back_to_char').on('click', () => {
+            currentStep = 2;
+            updateStepDisplay();
+        });
+
+        dlg.on('click', '.ugw-story-card', function () {
+            dlg.find('.ugw-story-card').removeClass('selected');
+            $(this).addClass('selected');
+            state.storyType = $(this).data('type');
+            state.selectedScenario = ''; // Reset scenario selection
+
+            // Show/hide scenarios section
+            dlg.find('#ugp_scenarios_section').show();
+            dlg.find('#ugp_canon_scenarios, #ugp_au_scenarios, #ugp_nsfw_scenarios').hide();
+
+            if (state.storyType === 'canon') {
+                // For canon, hide scenario selection - we'll use character card analysis during plot hook generation
+                dlg.find('#ugp_scenarios_section').hide();
+                dlg.find('#ugp_scenarios_subtitle').text('Canon mode: Character card will be analyzed during plot hook generation');
+            } else if (state.storyType === 'au') {
+                // Show AU genres
+                const auGenres = offlineData.auTypes || [];
+                renderScenarioChips(dlg.find('#ugp_au_scenarios_chips'), auGenres, '');
+                dlg.find('#ugp_au_scenarios').show();
+                dlg.find('#ugp_scenarios_subtitle').text('Select an AU genre to expand upon');
+            } else if (state.storyType === 'nsfw') {
+                // Show NSFW genres
+                const nsfwGenres = offlineData.nsfwScenarios || [];
+                renderScenarioChips(dlg.find('#ugp_nsfw_scenarios_chips'), nsfwGenres, '');
+                dlg.find('#ugp_nsfw_scenarios').show();
+                dlg.find('#ugp_scenarios_subtitle').text('Select a romantic scenario genre to expand upon');
+            }
+        });
+
+        // Canon scenario selection removed - using character card analysis only
+
+        dlg.on('click', '#ugp_au_scenarios_chips .ugw-scenario-chip', function () {
+            dlg.find('#ugp_au_scenarios_chips .ugw-scenario-chip').removeClass('selected');
+            $(this).addClass('selected');
+            state.selectedScenario = $(this).data('id');
+            state.auType = $(this).data('id');
+        });
+
+        dlg.on('click', '#ugp_nsfw_scenarios_chips .ugw-scenario-chip', function () {
+            dlg.find('#ugp_nsfw_scenarios_chips .ugw-scenario-chip').removeClass('selected');
+            $(this).addClass('selected');
+            state.selectedScenario = $(this).data('id');
+            state.nsfwScenario = $(this).data('id');
+        });
+
+        dlg.on('click', '#ugp_ideas_chips .ugw-idea-chip', function () {
+            dlg.find('#ugp_ideas_chips .ugw-idea-chip').removeClass('selected');
+            $(this).addClass('selected');
+            const setup = $(this).data('setup') || '';
+            state.selectedPreset = {
+                id: $(this).data('id'),
+                name: $(this).data('idea'),
+                description: $(this).data('desc') || $(this).data('idea'),
+                setup: setup,
+            };
+
+            // Auto-apply setup to custom scenario if it exists
+            if (setup && !dlg.find('#ugp_scenario_custom').val().trim()) {
+                dlg.find('#ugp_scenario_custom').val(setup);
+                state.customScenario = setup;
+            }
+        });
+
+        dlg.find('#ugp_next_to_premise').on('click', () => {
+            if (!state.storyType) {
+                toastr.warning('Please select a story type');
+                return;
+            }
+
+            // Filter by story type
+            const filteredRelationships = filterRelationshipsByStoryType(offlineData.greetingRelationships || [], state.storyType);
+            const filteredLocations = filterLocationsByStoryType(offlineData.greetingLocations || [], state.storyType);
+
+            renderPresetChips(dlg.find('#ugp_relationship_presets'), filteredRelationships, '');
+            renderPresetChips(dlg.find('#ugp_trope_presets'), offlineData.greetingTropes || [], '');
+            renderPresetChips(dlg.find('#ugp_encounter_presets'), offlineData.greetingEncounters || [], '');
+            renderPresetChips(dlg.find('#ugp_relationship_chips'), filteredRelationships, '');
+            renderPresetChips(dlg.find('#ugp_location_chips'), filteredLocations, '');
+
+            const posBeats = shuffle(offlineData.positiveStoryBeats || []).slice(0, 8);
+            const negBeats = shuffle(offlineData.negativeStoryBeats || []).slice(0, 8);
+            renderBeatChips(dlg.find('#ugp_positive_beats'), posBeats, state.selectedBeats);
+            renderBeatChips(dlg.find('#ugp_negative_beats'), negBeats, state.selectedBeats);
+
+            renderToneChips(dlg.find('#ugp_tone_chips'), offlineData.greetingTones || [], state.selectedTones);
+
+            // NSFW tones (if applicable)
+            if (state.storyType === 'nsfw') {
+                renderNsfwTones(dlg.find('#ugp_nsfw_tone_chips'), offlineData.nsfwTones || [], state.selectedNsfwTones);
+                dlg.find('#ugp_nsfw_tones_group').show();
+            } else {
+                dlg.find('#ugp_nsfw_tones_group').hide();
+            }
+
+            currentStep = 4;
+            updateStepDisplay();
+        });
+
+        // Step 4: Premise
+        dlg.find('#ugp_back_to_type').on('click', () => {
+            currentStep = 3;
+            updateStepDisplay();
+        });
+
+        // Premise tab switching
+        dlg.on('click', '.ugw-premise-tab', function () {
+            dlg.find('.ugw-premise-tab').removeClass('active');
+            $(this).addClass('active');
+            state.premiseMode = $(this).data('tab');
+            dlg.find('.ugw-premise-panel').removeClass('active').hide();
+            dlg.find(`.ugw-premise-panel[data-panel="${state.premiseMode}"]`).addClass('active').show();
+        });
+
+        // Preset selection (persona version)
+        dlg.on('click', '#ugp_relationship_presets .ugw-preset-chip, #ugp_trope_presets .ugw-preset-chip, #ugp_encounter_presets .ugw-preset-chip', function () {
+            dlg.find('.ugw-preset-chip').removeClass('selected');
+            $(this).addClass('selected');
+            state.selectedPreset = {
+                id: $(this).data('id'),
+                name: $(this).data('name'),
+                description: $(this).data('desc'),
+            };
+            dlg.find('#ugp_preset_content').html(`
+                <div class="preset-name">${state.selectedPreset.name}</div>
+                <div class="preset-desc">${state.selectedPreset.description}</div>
+            `);
+            dlg.find('#ugp_selected_preset').show();
+        });
+
+        // Custom panel handlers
+        dlg.on('click', '#ugp_relationship_chips .ugw-preset-chip', function () {
+            const isSelected = $(this).hasClass('selected');
+            dlg.find('#ugp_relationship_chips .ugw-preset-chip').removeClass('selected');
+            if (!isSelected) {
+                $(this).addClass('selected');
+                state.relationship = $(this).data('name');
+            } else {
+                state.relationship = '';
+            }
+            dlg.find('#ugp_relationship_custom').val('');
+        });
+
+        dlg.find('#ugp_relationship_custom').on('input', function () {
+            if ($(this).val().trim()) {
+                dlg.find('#ugp_relationship_chips .ugw-preset-chip').removeClass('selected');
+                state.relationship = $(this).val().trim();
+            }
+        });
+
+        dlg.on('click', '#ugp_location_chips .ugw-preset-chip', function () {
+            const isSelected = $(this).hasClass('selected');
+            dlg.find('#ugp_location_chips .ugw-preset-chip').removeClass('selected');
+            if (!isSelected) {
+                $(this).addClass('selected');
+                state.location = $(this).data('name');
+            } else {
+                state.location = '';
+            }
+            dlg.find('#ugp_location_custom').val('');
+        });
+
+        dlg.find('#ugp_location_custom').on('input', function () {
+            if ($(this).val().trim()) {
+                dlg.find('#ugp_location_chips .ugw-preset-chip').removeClass('selected');
+                state.location = $(this).val().trim();
+            }
+        });
+
+
+        // Add custom positive beat
+        dlg.find('#ugp_add_positive_beat').on('click', async function () {
+            const beat = await Popup.show.input('Add Positive Story Beat', 'Enter a positive story beat:');
+            if (!beat || !beat.trim()) return;
+
+            const beatText = beat.trim();
+            if (!offlineData.positiveStoryBeats) offlineData.positiveStoryBeats = [];
+            offlineData.positiveStoryBeats.push(beatText);
+
+            // Add to current display
+            const container = dlg.find('#ugp_positive_beats');
+            container.append(`<div class="ugw-beat-chip selected" data-beat="${beatText.replace(/"/g, '&quot;')}">${beatText}</div>`);
+            state.selectedBeats.add(beatText);
+            updatePersonaBeatsDisplay();
+            toastr.success(`Added "${beatText}" positive beat!`);
+        });
+
+        // Add custom negative beat
+        dlg.find('#ugp_add_negative_beat').on('click', async function () {
+            const beat = await Popup.show.input('Add Negative Story Beat', 'Enter a tension/conflict story beat:');
+            if (!beat || !beat.trim()) return;
+
+            const beatText = beat.trim();
+            if (!offlineData.negativeStoryBeats) offlineData.negativeStoryBeats = [];
+            offlineData.negativeStoryBeats.push(beatText);
+
+            // Add to current display
+            const container = dlg.find('#ugp_negative_beats');
+            container.append(`<div class="ugw-beat-chip selected" data-beat="${beatText.replace(/"/g, '&quot;')}">${beatText}</div>`);
+            state.selectedBeats.add(beatText);
+            updatePersonaBeatsDisplay();
+            toastr.success(`Added "${beatText}" negative beat!`);
+        });
+
+        // Beats
+        dlg.on('click', '#ugp_positive_beats .ugw-beat-chip, #ugp_negative_beats .ugw-beat-chip', function () {
+            const beat = $(this).data('beat');
+            if (state.selectedBeats.has(beat)) {
+                state.selectedBeats.delete(beat);
+                $(this).removeClass('selected');
+            } else {
+                state.selectedBeats.add(beat);
+                $(this).addClass('selected');
+            }
+            updatePersonaBeatsDisplay();
+        });
+
+        function updatePersonaBeatsDisplay() {
+            const container = dlg.find('#ugp_selected_beats_list');
+            renderSelectedBeats(container, state.selectedBeats);
+            dlg.find('#ugp_selected_beats_display').toggle(state.selectedBeats.size > 0);
+        }
+
+        dlg.on('click', '#ugp_selected_beats_list .remove-beat', function () {
+            const beat = $(this).parent().data('beat');
+            state.selectedBeats.delete(beat);
+            dlg.find(`.ugw-beat-chip[data-beat="${beat}"]`).removeClass('selected');
+            updatePersonaBeatsDisplay();
+        });
+
+        dlg.find('#ugp_refresh_positive_beats').on('click', () => {
+            const newBeats = shuffle(offlineData.positiveStoryBeats || []).slice(0, 8);
+            renderBeatChips(dlg.find('#ugp_positive_beats'), newBeats, state.selectedBeats);
+        });
+
+        dlg.find('#ugp_refresh_negative_beats').on('click', () => {
+            const newBeats = shuffle(offlineData.negativeStoryBeats || []).slice(0, 8);
+            renderBeatChips(dlg.find('#ugp_negative_beats'), newBeats, state.selectedBeats);
+        });
+
+        dlg.find('#ugp_enhance_scenario').on('click', async function () {
+            // Include context from selected chips
+            const contextParts = [];
+
+            if (state.relationship) contextParts.push(`Relationship: ${state.relationship}`);
+            if (state.location) contextParts.push(`Location: ${state.location}`);
+            if (state.selectedBeats.size > 0) {
+                contextParts.push(`Key Story Beats: ${Array.from(state.selectedBeats).join(', ')}`);
+            }
+            // Add persona context for specific flavor
+            if (state.selectedPersona) {
+                contextParts.push(`Persona: ${state.selectedPersona.name}`);
+            }
+
+            const userInput = dlg.find('#ugp_scenario_custom').val().trim();
+            const fullInput = userInput
+                ? `${contextParts.length > 0 ? contextParts.join('\n') + '\n\nUser Notes: ' : ''}${userInput}`
+                : contextParts.join('\n');
+
+            if (!fullInput) {
+                toastr.warning('Add some details or select tags first');
+                return;
+            }
+
+            $(this).prop('disabled', true).find('i').addClass('fa-spin');
+            try {
+                const enhanced = await enhanceText(fullInput);
+                dlg.find('#ugp_scenario_custom').val(enhanced);
+                state.customScenario = enhanced;
+            } catch (e) {
+                console.error(e);
+                toastr.error('Failed to enhance');
+            }
+            $(this).prop('disabled', false).find('i').removeClass('fa-spin');
+        });
+
+        dlg.find('#ugp_next_to_hooks').on('click', () => {
+            state.customScenario = dlg.find('#ugp_scenario_custom').val().trim();
+
+            if (state.premiseMode === 'preset' && !state.selectedPreset) {
+                toastr.warning('Please select a premise');
+                return;
+            }
+            if (state.premiseMode === 'custom' && !state.relationship && !state.location && state.selectedBeats.size === 0 && !state.customScenario) {
+                toastr.warning('Please add some scenario details');
+                return;
+            }
+
+            // Go to plot hooks step
+            currentStep = 5;
+            updateStepDisplay();
+        });
+
+        // Step 5: Plot Hooks
+        dlg.find('#ugp_back_to_premise').on('click', () => {
+            currentStep = 4;
+            updateStepDisplay();
+        });
+
+        // Generate plot hooks
+        dlg.find('#ugp_generate_hooks').on('click', async function () {
+            setButtonLoading($(this), true);
+            try {
+                // Build premise summary for hook generation
+                let premiseSummary = '';
+                if (state.premiseMode === 'preset' && state.selectedPreset) {
+                    premiseSummary = `${state.selectedPreset.name}: ${state.selectedPreset.description}`;
+                } else {
+                    const parts = [];
+                    if (state.relationship) parts.push(`Relationship: ${state.relationship}`);
+                    if (state.location) parts.push(`Location: ${state.location}`);
+                    if (state.selectedBeats.size > 0) {
+                        parts.push(`Story beats: ${Array.from(state.selectedBeats).join(', ')}`);
+                    }
+                    if (state.customScenario) parts.push(state.customScenario);
+                    premiseSummary = parts.join('. ') || 'A meeting between {{user}} and the character';
+                }
+
+                // Generate hooks with premise information and persona data
+                // FIX: If using preset, pass the summary as customScenario so it's included
+                const isPreset = state.premiseMode === 'preset';
+                const hooks = await generateGreetingHooks(
+                    state.charData,
+                    state.storyType,
+                    state.selectedScenario,
+                    isPreset ? '' : state.relationship,
+                    isPreset ? '' : state.location,
+                    isPreset ? [] : state.selectedBeats,
+                    isPreset ? premiseSummary : state.customScenario,
+                    state.selectedPersona // personaData
+                );
+
+                state.hooks = hooks;
+                renderHooks(dlg.find('#ugp_hooks_list'), hooks, state.selectedHookIndex);
+
+                if (hooks.length === 0) {
+                    toastr.warning('No hooks generated. Try again.');
+                } else {
+                    toastr.success(`Generated ${hooks.length} plot hooks!`);
+                }
+            } catch (e) {
+                console.error('[Ultimate Persona] Hook generation error:', e);
+                toastr.error('Failed to generate hooks: ' + e.message);
+            } finally {
+                setButtonLoading($(this), false);
+            }
+        });
+
+        // Hook selection
+        dlg.on('click', '#ugp_hooks_list .up-hook-item', function () {
+            dlg.find('#ugp_hooks_list .up-hook-item').removeClass('selected');
+            $(this).addClass('selected');
+            state.selectedHookIndex = parseInt($(this).data('hook'));
+            state.useCustomHook = false;
+            dlg.find('#ugp_use_custom_hook').prop('checked', false);
+        });
+
+        // Custom hook checkbox
+        dlg.find('#ugp_use_custom_hook').on('change', function () {
+            state.useCustomHook = $(this).is(':checked');
+            if (state.useCustomHook) {
+                dlg.find('#ugp_hooks_list .up-hook-item').removeClass('selected');
+                state.selectedHookIndex = -1;
+            }
+        });
+
+        // Custom hook text
+        dlg.find('#ugp_custom_hook_text').on('input', function () {
+            state.customHookText = $(this).val().trim();
+        });
+
+        // Enhance hook
+        dlg.find('#ugp_enhance_hook').on('click', async function () {
+            const input = dlg.find('#ugp_custom_hook_text').val().trim();
+            if (!input) {
+                toastr.warning('Enter a hook first');
+                return;
+            }
+            $(this).prop('disabled', true).find('i').addClass('fa-spin');
+            try {
+                const enhanced = await enhanceText(input);
+                dlg.find('#ugp_custom_hook_text').val(enhanced);
+                state.customHookText = enhanced;
+            } catch (e) {
+                toastr.error('Failed to enhance');
+            }
+            $(this).prop('disabled', false).find('i').removeClass('fa-spin');
+        });
+
+        // Continue from hooks to details
+        dlg.find('#ugp_next_to_details').on('click', () => {
+            if (!state.useCustomHook && state.selectedHookIndex < 0 && state.hooks.length > 0) {
+                toastr.warning('Please select a plot hook or use a custom scenario');
+                return;
+            }
+            if (state.useCustomHook && !state.customHookText.trim()) {
+                toastr.warning('Please enter a custom hook');
+                return;
+            }
+
+            // Update summary
+            dlg.find('#ugp_summary_persona').text(state.selectedPersona.name);
+            dlg.find('#ugp_summary_char').text(state.charData.name);
+            dlg.find('#ugp_summary_type').text(state.storyType.charAt(0).toUpperCase() + state.storyType.slice(1));
+
+            let premiseSummary = '';
+            if (state.useCustomHook) {
+                premiseSummary = state.customHookText;
+            } else if (state.selectedHookIndex >= 0 && state.hooks[state.selectedHookIndex]) {
+                premiseSummary = state.hooks[state.selectedHookIndex];
+            } else if (state.premiseMode === 'preset' && state.selectedPreset) {
+                premiseSummary = state.selectedPreset.name;
+            } else {
+                const parts = [];
+                if (state.relationship) parts.push(state.relationship);
+                if (state.location) parts.push(`at ${state.location}`);
+                if (state.selectedBeats.size > 0) parts.push(`${state.selectedBeats.size} story beats`);
+                premiseSummary = parts.join(', ') || 'Custom scenario';
+            }
+            dlg.find('#ugp_summary_premise').text(premiseSummary);
+
+            currentStep = 6;
+            updateStepDisplay();
+        });
+
+        // Step 6: Details
+        dlg.find('#ugp_back_to_hooks').on('click', () => {
+            currentStep = 5;
+            updateStepDisplay();
+        });
+
+        // Step 5: Details
+        dlg.find('#ugp_back_to_premise').on('click', () => {
+            currentStep = 4;
+            updateStepDisplay();
+        });
+
+        dlg.on('click', '#ugp_narration_options .up-narration-option', function () {
+            dlg.find('#ugp_narration_options .up-narration-option').removeClass('selected');
+            $(this).addClass('selected');
+            state.narrationStyle = $(this).data('style');
+        });
+
+        dlg.on('click', '.ugw-length-option', function () {
+            dlg.find('.ugw-length-option').removeClass('selected');
+            $(this).addClass('selected');
+            state.length = $(this).data('length');
+        });
+
+        dlg.on('click', '#ugp_tone_chips .ugw-tone-chip', function () {
+            const toneId = $(this).data('id');
+            if (state.selectedTones.has(toneId)) {
+                state.selectedTones.delete(toneId);
+                $(this).removeClass('selected');
+            } else {
+                state.selectedTones.add(toneId);
+                $(this).addClass('selected');
+            }
+        });
+
+        // NSFW Tones
+        dlg.on('click', '#ugp_nsfw_tone_chips .ugw-tone-chip', function () {
+            const toneId = $(this).data('id');
+            if (state.selectedNsfwTones.has(toneId)) {
+                state.selectedNsfwTones.delete(toneId);
+                $(this).removeClass('selected');
+            } else {
+                state.selectedNsfwTones.add(toneId);
+                $(this).addClass('selected');
+            }
+        });
+
+        dlg.on('click', '.ugp-focus-option', function () {
+            dlg.find('.ugp-focus-option').removeClass('selected');
+            $(this).addClass('selected');
+            state.personaFocus = $(this).data('focus');
+        });
+
+        // Generate greeting
+        dlg.find('#ugp_generate_greeting').on('click', async function () {
+            state.additionalInstructions = dlg.find('#ugp_additional_instructions').val().trim();
+
+            setButtonLoading($(this), true);
+            try {
+                // Get the selected plot hook
+                let plotHook = '';
+                if (state.useCustomHook) {
+                    plotHook = state.customHookText;
+                } else if (state.selectedHookIndex >= 0 && state.hooks[state.selectedHookIndex]) {
+                    plotHook = state.hooks[state.selectedHookIndex];
+                } else if (state.premiseMode === 'preset' && state.selectedPreset) {
+                    plotHook = `${state.selectedPreset.name}: ${state.selectedPreset.description}`;
+                } else {
+                    const parts = [];
+                    if (state.relationship) parts.push(`Relationship: ${state.relationship}`);
+                    if (state.location) parts.push(`Location: ${state.location}`);
+                    if (state.selectedBeats.size > 0) parts.push(`Story beats: ${Array.from(state.selectedBeats).join(', ')}`);
+                    if (state.customScenario) parts.push(state.customScenario);
+                    plotHook = parts.join('. ') || 'A meeting between {{user}} and the character';
+                }
+
+                const toneNames = Array.from(state.selectedTones).map(id => {
+                    const tone = offlineData.greetingTones.find(t => t.id === id);
+                    return tone?.name || id;
+                });
+
+                const nsfwToneNames = Array.from(state.selectedNsfwTones).map(id => {
+                    const tone = (offlineData.nsfwTones || []).find(t => t.id === id);
+                    return tone?.name || id;
+                });
+
+                const canonConflictNames = Array.from(state.selectedCanonConflicts).map(id => {
+                    const c = (offlineData.canonConflicts || []).find(c => c.id === id);
+                    return c ? `${c.name}: ${c.description}` : id;
+                });
+
+                const canonTensionNames = Array.from(state.selectedCanonTensions).map(id => {
+                    const t = (offlineData.canonTensions || []).find(t => t.id === id);
+                    return t ? `${t.name}: ${t.description}` : id;
+                });
+
+                const prompt = buildGreetingPrompt({
+                    charData: state.charData,
+                    greetingStyle: state.greetingStyle,
+                    storyType: state.storyType,
+                    auType: state.auType,
+                    nsfwScenario: state.nsfwScenario,
+                    premise: state.selectedPreset,
+                    plotHook: plotHook,
+                    relationship: state.relationship,
+                    location: state.location,
+                    storyBeats: Array.from(state.selectedBeats),
+                    customScenario: state.customScenario,
+                    narrationStyle: state.narrationStyle,
+                    length: state.length,
+                    tones: toneNames,
+                    nsfwTones: nsfwToneNames,
+                    canonConflicts: canonConflictNames,
+                    canonTensions: canonTensionNames,
+                    additionalInstructions: state.additionalInstructions,
+                    personaData: state.selectedPersona,
+                    personaFocus: state.personaFocus,
+                });
+
+                state.generatedGreeting = await generateGreetingFromPrompt(prompt, state.charData, state.selectedPersona);
+                dlg.find('#ugp_greeting_preview_text').val(state.generatedGreeting);
+                dlg.find('#ugp_final_char_name').text(state.charData.name);
+
+                currentStep = 7;
+                updateStepDisplay();
+            } catch (e) {
+                toastr.error(e.message);
+            } finally {
+                setButtonLoading($(this), false);
+            }
+        });
+
+        // Step 6: Review
+        dlg.find('#ugp_back_to_details').on('click', () => {
+            currentStep = 5;
+            updateStepDisplay();
+        });
+
+        // Enhancement buttons
+        dlg.find('#ugp_more_description').on('click', async function () {
+            const current = dlg.find('#ugp_greeting_preview_text').val();
+            if (!current) return;
+
+            setButtonLoading($(this), true);
+            try {
+                const enhanced = await enhanceGreetingDescription(current, state.charData);
+                dlg.find('#ugp_greeting_preview_text').val(enhanced.trim());
+                toastr.success('Added more description!');
+            } catch (e) {
+                toastr.error('Failed to enhance');
+            }
+            setButtonLoading($(this), false);
+        });
+
+        dlg.find('#ugp_more_dialogue').on('click', async function () {
+            const current = dlg.find('#ugp_greeting_preview_text').val();
+            if (!current) return;
+
+            setButtonLoading($(this), true);
+            try {
+                const enhanced = await enhanceGreetingDialogue(current, state.charData);
+                dlg.find('#ugp_greeting_preview_text').val(enhanced.trim());
+                toastr.success('Added more dialogue!');
+            } catch (e) {
+                toastr.error('Failed to enhance');
+            }
+            setButtonLoading($(this), false);
+        });
+
+        dlg.find('#ugp_more_persona').on('click', async function () {
+            const current = dlg.find('#ugp_greeting_preview_text').val();
+            if (!current) return;
+
+            setButtonLoading($(this), true);
+            try {
+                const enhanced = await enhanceGreetingPersona(current, state.charData, state.selectedPersona);
+                dlg.find('#ugp_greeting_preview_text').val(enhanced.trim());
+                toastr.success('Added more persona references!');
+            } catch (e) {
+                toastr.error('Failed to enhance');
+            }
+            setButtonLoading($(this), false);
+        });
+
+        dlg.find('#ugp_adjust_tone').on('click', async function () {
+            const current = dlg.find('#ugp_greeting_preview_text').val();
+            if (!current) return;
+
+            const tone = await Popup.show.input('Adjust Tone', 'What tone would you like? (e.g., more romantic, darker, funnier)');
+            if (!tone) return;
+
+            setButtonLoading($(this), true);
+            try {
+                const adjusted = await adjustGreetingTone(current, state.charData, tone);
+                dlg.find('#ugp_greeting_preview_text').val(adjusted.trim());
+                toastr.success('Tone adjusted!');
+            } catch (e) {
+                toastr.error('Failed to adjust');
+            }
+            setButtonLoading($(this), false);
+        });
+
+        // Regenerate
+        dlg.find('#ugp_regenerate_greeting').on('click', async function () {
+            setButtonLoading($(this), true);
+            try {
+                // Get the selected plot hook
+                let plotHook = '';
+                if (state.useCustomHook) {
+                    plotHook = state.customHookText;
+                } else if (state.selectedHookIndex >= 0 && state.hooks[state.selectedHookIndex]) {
+                    plotHook = state.hooks[state.selectedHookIndex];
+                } else if (state.premiseMode === 'preset' && state.selectedPreset) {
+                    plotHook = `${state.selectedPreset.name}: ${state.selectedPreset.description}`;
+                } else {
+                    const parts = [];
+                    if (state.relationship) parts.push(`Relationship: ${state.relationship}`);
+                    if (state.location) parts.push(`Location: ${state.location}`);
+                    if (state.selectedBeats.size > 0) parts.push(`Story beats: ${Array.from(state.selectedBeats).join(', ')}`);
+                    if (state.customScenario) parts.push(state.customScenario);
+                    plotHook = parts.join('. ') || 'A meeting between {{user}} and the character';
+                }
+
+                const toneNames = Array.from(state.selectedTones).map(id => {
+                    const tone = offlineData.greetingTones.find(t => t.id === id);
+                    return tone?.name || id;
+                });
+
+                const nsfwToneNames = Array.from(state.selectedNsfwTones).map(id => {
+                    const tone = (offlineData.nsfwTones || []).find(t => t.id === id);
+                    return tone?.name || id;
+                });
+
+                const canonConflictNames = Array.from(state.selectedCanonConflicts).map(id => {
+                    const c = (offlineData.canonConflicts || []).find(c => c.id === id);
+                    return c ? `${c.name}: ${c.description}` : id;
+                });
+
+                const canonTensionNames = Array.from(state.selectedCanonTensions).map(id => {
+                    const t = (offlineData.canonTensions || []).find(t => t.id === id);
+                    return t ? `${t.name}: ${t.description}` : id;
+                });
+
+                const prompt = buildGreetingPrompt({
+                    charData: state.charData,
+                    greetingStyle: state.greetingStyle,
+                    storyType: state.storyType,
+                    auType: state.auType,
+                    nsfwScenario: state.nsfwScenario,
+                    premise: state.selectedPreset,
+                    plotHook: plotHook,
+                    relationship: state.relationship,
+                    location: state.location,
+                    storyBeats: Array.from(state.selectedBeats),
+                    customScenario: state.customScenario,
+                    narrationStyle: state.narrationStyle,
+                    length: state.length,
+                    tones: toneNames,
+                    nsfwTones: nsfwToneNames,
+                    canonConflicts: canonConflictNames,
+                    canonTensions: canonTensionNames,
+                    additionalInstructions: state.additionalInstructions,
+                    personaData: state.selectedPersona,
+                    personaFocus: state.personaFocus,
+                });
+
+                state.generatedGreeting = await generateGreetingFromPrompt(prompt, state.charData, state.selectedPersona);
+                dlg.find('#ugp_greeting_preview_text').val(state.generatedGreeting);
+                toastr.success('Regenerated!');
+            } catch (e) {
+                toastr.error(e.message);
+            }
+            setButtonLoading($(this), false);
+        });
+
+        // Step 7: Review
+        dlg.find('#ugp_back_to_details').on('click', () => {
+            currentStep = 6;
+            updateStepDisplay();
+        });
+
+        // Save greeting
+        dlg.find('#ugp_save_greeting').on('click', async function () {
+            const greeting = dlg.find('#ugp_greeting_preview_text').val().trim();
+            if (!greeting) {
+                toastr.warning('Add greeting text');
+                return;
+            }
+
+            setButtonLoading($(this), true);
+            try {
+                const num = await saveAlternateGreeting(state.charIndex, greeting);
+                toastr.success(`Greeting #${num} saved to ${state.charData.name}!`);
+
+                dlg.find('#ugp_success_message').text(`Greeting #${num} featuring ${state.selectedPersona.name} has been added to ${state.charData.name}!`);
+                dlg.find('.ugp-step').hide();
+                dlg.find('.ugp-step[data-step="success"]').show().addClass('up-visible');
+                dlg.find('.up-progress-step').addClass('completed');
+
+                launchConfetti(dlg.find('#ugp_confetti_canvas')[0]);
+            } catch (e) {
+                toastr.error('Failed: ' + e.message);
+            }
+            setButtonLoading($(this), false);
+        });
+
+        // Success actions
+        dlg.find('#ugp_create_another').on('click', () => {
+            state.selectedPersona = null;
+            state.charIndex = -1;
+            state.charData = null;
+            state.storyType = '';
+            state.auType = '';
+            state.nsfwScenario = '';
+            state.selectedPreset = null;
+            state.relationship = '';
+            state.location = '';
+            state.selectedBeats.clear();
+            state.selectedTones.clear();
+            state.selectedNsfwTones.clear();
+            state.selectedCanonConflicts.clear();
+            state.selectedCanonTensions.clear();
+            state.customScenario = '';
+            dlg.find('.ugp-step').removeClass('up-visible');
+            dlg.find('.up-progress-step').removeClass('completed');
+            dlg.find('.ugp-persona-card, .up-char-card, .ugw-preset-chip, .ugw-beat-chip, .ugw-tone-chip, .ugw-story-card, .ugw-idea-chip, .ugp-focus-option, .ugw-canon-chip, .up-au-option, .up-nsfw-option').removeClass('selected');
+            dlg.find('.ugp-focus-option[data-focus="balanced"]').addClass('selected');
+            dlg.find('#ugp_selected_preset, #ugp_selected_beats_display, #ugp_quick_ideas, #ugp_persona_preview, #ugp_pairing_preview, #ugp_greeting_preview, #ugp_canon_elements, #ugp_au_elements, #ugp_nsfw_elements, #ugp_nsfw_tones_group').hide();
+            dlg.find('#ugp_selected_persona_name').text('None');
+            dlg.find('#ugp_scenario_custom').val('');
+            currentStep = 1;
+            updateStepDisplay();
+        });
+
+        dlg.find('#ugp_close_wizard').on('click', () => {
+            $('.popup-button-cancel').trigger('click');
+        });
+
+        updateStepDisplay();
+        await callGenericPopup(dlg, POPUP_TYPE.TEXT, '', { wide: true, large: true, okButton: false, cancelButton: 'Close', allowVerticalScrolling: true });
+    } catch (e) {
+        console.error('[Ultimate Persona] Persona greeting wizard error:', e);
+        toastr.error('Failed to open: ' + e.message);
+    }
+}
+
 // ==================== QUICK MENU ====================
 
 function showQuickMenu(btn) {
     console.log('[Ultimate Persona] Opening quick menu...');
-    
+
     // Remove existing menu
     $('.up-quick-menu').remove();
 
@@ -2549,7 +5613,7 @@ function showQuickMenu(btn) {
     let recentHtml = '';
     if (recentHistory.length > 0) {
         recentHtml = `
-            <div class="up-quick-menu-header">Recent</div>
+            <div class="up-quick-menu-header">Recent Personas</div>
             ${recentHistory.map(h => `
                 <div class="up-quick-menu-item up-quick-recent" data-id="${h.id}">
                     <i class="fa-solid fa-clock-rotate-left"></i>
@@ -2562,14 +5626,26 @@ function showQuickMenu(btn) {
 
     const menu = $(`
         <div class="up-quick-menu">
+            <div class="up-quick-menu-header">Create Persona</div>
             <div class="up-quick-menu-item" id="up_quick_new">
-                <i class="fa-solid fa-plus"></i>
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
                 <span>New Persona (from Character)</span>
             </div>
             <div class="up-quick-menu-item" id="up_quick_standalone">
                 <i class="fa-solid fa-bolt"></i>
                 <span>Quick Standalone Persona</span>
             </div>
+            <div class="up-quick-menu-divider"></div>
+            <div class="up-quick-menu-header">Create Greeting</div>
+            <div class="up-quick-menu-item" id="up_quick_greeting">
+                <i class="fa-solid fa-message"></i>
+                <span>New Alternate Greeting</span>
+            </div>
+            <div class="up-quick-menu-item" id="up_quick_greeting_persona">
+                <i class="fa-solid fa-user-pen"></i>
+                <span>Greeting with Persona</span>
+            </div>
+            <div class="up-quick-menu-divider"></div>
             ${recentHtml}
             <div class="up-quick-menu-item" id="up_quick_settings">
                 <i class="fa-solid fa-gear"></i>
@@ -2580,7 +5656,7 @@ function showQuickMenu(btn) {
 
     // Append to body instead and position near button
     $('body').append(menu);
-    
+
     const btnOffset = btn.offset();
     const btnHeight = btn.outerHeight();
     menu.css({
@@ -2598,6 +5674,16 @@ function showQuickMenu(btn) {
     menu.find('#up_quick_standalone').on('click', () => {
         menu.remove();
         showQuickPersonaPopup();
+    });
+
+    menu.find('#up_quick_greeting').on('click', () => {
+        menu.remove();
+        showGreetingWizard();
+    });
+
+    menu.find('#up_quick_greeting_persona').on('click', () => {
+        menu.remove();
+        showPersonaGreetingWizard();
     });
 
     menu.find('#up_quick_settings').on('click', () => {
@@ -2619,10 +5705,10 @@ function showQuickMenu(btn) {
 
 function addUltimatePersonaButton() {
     console.log('[Ultimate Persona] Adding button to UI...');
-    
+
     // Remove any existing button first
     $('#ultimate_persona_button').remove();
-    
+
     const btn = $('<div id="ultimate_persona_button" class="fa-solid fa-wand-magic-sparkles menu_button menu_button_icon interactable" title="Ultimate Persona Generator"></div>');
 
     // Try multiple possible locations
